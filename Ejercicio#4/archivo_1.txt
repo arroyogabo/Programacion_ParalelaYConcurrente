@@ -1,0 +1,5 @@
+Elabore un programa paralelo mediante OpenMP en C++ demuestre el concepto de "productores" y "consumidores" como una estrategia de división de tareas útil al paralelizar una tarea más compleja. 
+Cada hilo "productor" leerá un archivo "por líneas", las colocará en una cola compartida entre todos los hilos "productores" (reutilice la cola genérica de mensajes analizada en clase "queue_lk.h") como un mensaje. 
+Los hilos "consumidores" por su parte, tomarán una de las líneas (o mensajes en la cola) y la "tokenizará" lo que debe entenderse como separar las palabras de la línea. 
+Se puede suponer que las palabras en cada mensaje ya vienen separadas por blancos.  
+Los "consumidores" desplegarán (ordenadamente, es decir, evitando los conflictos), por medio de "cout", las palabras de las líneas "tokenizadas".
