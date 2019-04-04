@@ -79,11 +79,6 @@ int main(int argc, char* argv[]) {
 			thread_location = (thread_id * carga) * 2;
 			it = messy.begin() + thread_location;  //Iterador para recorrer el vector y pasarlo al sort.
 			end = carga * 2;
-#	pragma omp critical 
-			{
-				cout << "\nThread: " << thread_id << " comienza en: " << *(it) << " termina en " << *(it + end - 1) << endl;
-				cout << endl;
-			}
 
 			it_copy = copy(it, it+carga, it);
 			it_copy = copy(it+carga, it + end, it_copy);
