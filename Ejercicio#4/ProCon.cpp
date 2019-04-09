@@ -18,6 +18,7 @@ int main(int argc, char const *argv[]) {
 
 	int num_thread_prod = 0;// Numero de productores
 	int num_thread_con = 0; // Numero de consumidores
+	int num_threads = 0;
 	int thread_id;
 	tupla linea_id;
 	ifstream entrada;
@@ -34,47 +35,50 @@ int main(int argc, char const *argv[]) {
 		
 	}
 
+	num_threads = num_thread_prod + num_thread_con;
 
-#   pragma omp parallel num_threads(num_thread_prod) \
+#   pragma omp parallel num_threads(num_threads) \
 	shared(prod_queue) private(archivo, entrada, linea, linea_id, thread_id)
 	{
-		archivo = root + "archivo_" + to_string(omp_get_thread_num()) + ".txt";
-
-		entrada.open(archivo); //Ubicacion relativa del archivo.
 		thread_id = omp_get_thread_num();
-		//Mientras no sea el final del archivo lea linea por linea.
-		while (!entrada.eof()) {
-			getline(entrada, linea);
-			linea_id.linea = linea;
-			linea_id.thread_id = thread_id;
-			
+		if (thread_id < num_thread_prod) {
+
+			archivo = root + "archivo_" + to_string(omp_get_thread_num()) + ".txt";
+			entrada.open(archivo); //Ubicacion relativa del archivo.
+			thread_id = omp_get_thread_num();
+			//Mientras no sea el final del archivo lea linea por linea.
+			while (!entrada.eof()) {
+				getline(entrada, linea);
+				linea_id.linea = linea;
+				linea_id.thread_id = thread_id;
+
 #	pragma omp critical
-			{
-				prod_queue.push(linea_id);
+				{
+					prod_queue.push(linea_id);
+				}
 			}
+			entrada.close();
 		}
-		entrada.close();
-	}
-	
-#	pragma omp parallel num_threads(num_thread_con) \
-	shared(prod_queue) private(linea_id)
-	{
-		while (!prod_queue.empty()) {
+#	pragma omp barrier
+
+		if (thread_id >= num_thread_prod) {
+
+			while (!prod_queue.empty()) {
 #	pragma omp critical 
-			{
-				linea_id = prod_queue.front();
-				prod_queue.pop();
-			}
-			replace(linea_id.linea.begin(), linea_id.linea.end(), ' ', '_');
+				{
+					linea_id = prod_queue.front();
+					prod_queue.pop();
+				}
+				replace(linea_id.linea.begin(), linea_id.linea.end(), ' ', '_');
 
 #	pragma omp critical
-			{
-				cout << "Linea tokenizada por el thread: " << linea_id.thread_id << " " << linea_id.linea << endl;
-			}
+				{
+					cout << "Linea tokenizada por el thread: " << linea_id.thread_id << " " << linea_id.linea << endl;
+				}
 
+			}
 		}
 	}
-
 	cin.ignore();
 	cin.ignore();
 
