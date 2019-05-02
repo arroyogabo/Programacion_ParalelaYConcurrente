@@ -48,14 +48,14 @@ public:
 	void inicializarCuadrantes(ifstream& arch_cuadrantes);
 
 	// EFE: inicializa los transectos verticales sobre la berma con los datos en el archivo.
-	void inicializarTransectosVerticales(ifstream arch_transectos_verticales);
+	void inicializarTransectosVerticales(ifstream& arch_transectos_verticales);
 
 	// EFE: inicializa el transecto paralelo a la berma con el ancho y largo indicado.
-	void inicializarTransectoBerma(int ancho, int largo);
+	void inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berma);
 
 	// EFE: crea la cantidad indicada de tortugas y las inicializa usando la distribuci�n normal
 	// con el promedio y desviaci�n dados para la velocidad.
-	void inicializarTortugas(ifstream comportamiento_tortugas);
+	void inicializarTortugas(ifstream& comportamiento_tortugas);
 
 
 	// EFE: distribuye la cantidad total de tortugas que arriban, minuto a minuto, durante 360
@@ -100,6 +100,18 @@ private:
 	
 	vector< vector<double> > playa;
 	vector< vector<int> > cuadrantes;
+	vector< vector<int> > transectosVerticales;
+	vector< vector<double> > comportamientoTortugas;
+	vector< vector<int> > transectoParaleloBerma;
+	vector<Contador*> contadoresC; //Contadores cuadrantes
+	vector<Contador*> contadoresTV; //Contadores Transecto Vertical
+	vector<Contador*> contadoresTPB; //Contadores Transecto Paralelo a la Berma.
+
+	long totalTortugasArribaron;
+	long totalTortugasAnidaron;
+	double estimacionXtransectosSobreBerma;
+	double estimacionXtransectoHorizontal;
+	double estimacionXcuadrantes;
 
 };
 
@@ -122,21 +134,51 @@ void Simulador::inicializarPlaya(ifstream& arch_secciones)
 void Simulador::inicializarCuadrantes(ifstream& arch_cuadrantes)
 {
 	this->cuadrantes.clear();
-
+	Contador c;
 	this->leerDatos(arch_cuadrantes, this->cuadrantes, "cuadrantes.csv");
+	
+	int cntContadores = this->cuadrantes[0][0];
+
+	for (int i = 0; i < cntContadores; ++i) {
+		Contador* c = new Contador();
+		contadoresC.push_back(c);
+	}
 
 }
 
-void Simulador::inicializarTransectosVerticales(ifstream arch_transectos_verticales)
+void Simulador::inicializarTransectosVerticales(ifstream& arch_transectos_verticales)
 {
+	this->transectosVerticales.clear();
+
+	this->leerDatos(arch_transectos_verticales, this->transectosVerticales, "transectos_verticales.csv");
+
+	int cntContadores = this->cuadrantes[0][0];
+
+	for (int i = 0; i < cntContadores; ++i) {
+		Contador* c = new Contador();
+		contadoresTV.push_back(c);
+	}
 }
 
-void Simulador::inicializarTransectoBerma(int ancho, int largo)
+void Simulador::inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berma)
 {
+	this->transectoParaleloBerma.clear();
+
+	this->leerDatos(arch_transecto_paralelo_berma, this->transectoParaleloBerma, "transecto_paralelo_berma.csv");
+
+	int cntContadores = this->cuadrantes[0][0];
+
+	for (int i = 0; i < cntContadores; ++i) {
+		Contador* c = new Contador();
+		contadoresTPB.push_back(c);
+	}
 }
 
-void Simulador::inicializarTortugas(ifstream comportamiento_tortugas)
+void Simulador::inicializarTortugas(ifstream& comportamiento_tortugas)
 {
+	this->comportamientoTortugas.clear();
+
+	this->leerDatos(comportamiento_tortugas, this->comportamientoTortugas, "comportamiento_tortugas.csv");
 }
 
 void Simulador::inicializarArribada(double u, double s)
@@ -151,32 +193,35 @@ void Simulador::simular(int total_tics)
 {
 	ifstream e;
 	//this->inicializarPlaya(e);
-	//this->inicializarCuadrantes(e);
+	this->inicializarCuadrantes(e);
+	//this->inicializarTransectosVerticales(e);
+	//this->inicializarTortugas(e);
+	//this->inicializarTransectoBerma(e);
 }
 
 long Simulador::obtTotalTortugasArribaron()
 {
-	return 0;  // agregue su propio codigo
+	return this->totalTortugasArribaron;  
 }
 
 long Simulador::obtTotalTortugasAnidaron()
 {
-	return 0; // agregue su propio codigo
+	return this->totalTortugasAnidaron;
 }
 
 double Simulador::obtEstimacionXtransectosSobreBerma()
 {
-	return 0.0; // agregue su propio codigo
+	return this->estimacionXtransectosSobreBerma;
 }
 
 double Simulador::obtEstimacionXtransectoHorizontal()
 {
-	return 0.0; // agregue su propio codigo
+	return this->estimacionXtransectoHorizontal;
 }
 
 double Simulador::obtEstimacionXcuadrantes()
 {
-	return 0.0; // agregue su propio codigo
+	return this->estimacionXcuadrantes;
 }
 
 default_random_engine Simulador::generator; // inicializaci�n de la variable static
@@ -225,14 +270,14 @@ void Simulador::leerDatos(ifstream & arch_entrada, vector<vector<T>>& vv, string
 	catch (exception e) {
 		cout << "valor invalido o fuera de limite" << endl;
 	}
-	/*
+	
 	for (auto f : vv) {
 		for (auto x : f) {
 			cout << x << ',' << endl;
 		}
 		cout << endl;
 	}
-	*/
+	
 	arch_entrada.close();
 }
 
