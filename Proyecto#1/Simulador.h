@@ -9,10 +9,12 @@
 #include <assert.h>     /* assert */
 #include <random>
 #include <vector>
+#include <utility> //Para poder usar pair<>
 using namespace std;
 
 #include "Tortuga.h"
 #include "Contador.h"
+#include "Aleatorizador.h"
 
 
 double stod_wrapper(string v) throw (invalid_argument, out_of_range) { return std::stod(v); }
@@ -65,7 +67,7 @@ public:
 	// EFE: guarda los par�metros de la funci�n sinusoidal que se usa para generar la altura de la
 	// marea minuto a minuto por 360 minutos o 6 horas.
 	// NOTA: se debe usar modelo sinusoidal con periodo en minutos.
-	void inicializarMarea(double baja, double alta, int periodo);
+	void inicializarMarea(ifstream& arch_marea);
 
 	// REQ: total_tics <= 360.
 	// EFE: simula el movimiento de las tortugas y el conteo de los contadores durante 6 horas.
@@ -97,15 +99,19 @@ private:
 	vector< vector< T > > carga_valida_datos(ifstream& archivo, F t) throw (invalid_argument, out_of_range);
 	template< typename T >
 	void leerDatos(ifstream& arch_entrada, vector< vector <T> >& vv, string arch_name);
-	
+	int posYfinalTortuga(double indice);
+
 	vector< vector<double> > playa;
 	vector< vector<int> > cuadrantes;
 	vector< vector<int> > transectosVerticales;
 	vector< vector<double> > comportamientoTortugas;
 	vector< vector<int> > transectoParaleloBerma;
+	vector< vector <double> > mareas;
 	vector<Contador*> contadoresC; //Contadores cuadrantes
 	vector<Contador*> contadoresTV; //Contadores Transecto Vertical
 	vector<Contador*> contadoresTPB; //Contadores Transecto Paralelo a la Berma.
+	vector<Tortuga*> Tortugas; //Se almacenan las tortugas a simular.
+	vector<pair<int, int>> posicionesFinalesTortugas; //Relacion 1:1 con Tortugas, para saber su posicion final.
 
 	long totalTortugasArribaron;
 	long totalTortugasAnidaron;
@@ -185,18 +191,72 @@ void Simulador::inicializarArribada(double u, double s)
 {
 }
 
-void Simulador::inicializarMarea(double baja, double alta, int periodo)
+void Simulador::inicializarMarea(ifstream& arch_marea)
 {
+	this->mareas.clear();
+
+	this->leerDatos(arch_marea, this->mareas, "marea.csv");
 }
 
 void Simulador::simular(int total_tics)
 {
+	//Pruebas inicializadores
 	ifstream e;
-	//this->inicializarPlaya(e);
+	this->inicializarPlaya(e);
 	this->inicializarCuadrantes(e);
-	//this->inicializarTransectosVerticales(e);
-	//this->inicializarTortugas(e);
-	//this->inicializarTransectoBerma(e);
+	this->inicializarTransectosVerticales(e);
+	this->inicializarTortugas(e);
+	this->inicializarMarea(e);
+	this->inicializarTransectoBerma(e);
+	
+	//Generacion aleatoria de la velocidad de la tortuga.
+	double vPromedio = comportamientoTortugas[0][6]; //Velocidad Promedio.
+	double desviacionVelocidad = comportamientoTortugas[0][7]; //Desviacion estandar de la velocidad.
+	normal_distribution<double> distribution(vPromedio, desviacionVelocidad);
+	double vT = distribution(Aleatorizador::generador); //vT velocidad de la tortuga.
+	
+	int tic = 0;
+	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
+	double marea = this->mareas[0][0];
+	double posXinicialTortuga;
+	int posTerreno;
+	int posYfinalTortuga;
+
+	while (tic < total_tics) {
+		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
+		/*
+		//Calculo de la posicion inicial de la tortuga
+		uniform_real_distribution<double> random_uniform_real_X(0, this->transectoParaleloBerma[1][1]); //Pos X inicial tortuga;
+		posXinicialTortuga = random_uniform_real_X(Aleatorizador::generador);
+		pair<int, int> posInicial((int)posXinicialTortuga, (int)marea);
+		*/
+
+		//Calculo de la posicion final de la tortuga
+		uniform_real_distribution<double> random_uniform_real_posTerreno(0, 100); //Probabilidad de caer antes o despues de la berma.
+		posTerreno = (int)random_uniform_real_posTerreno(Aleatorizador::generador); //Entre 0 y 100
+		if (posTerreno <= 25) {
+			//Tortuga debe posicionarse antes de la Berma
+			int i = this->posYfinalTortuga(posTerreno);
+			uniform_real_distribution<double> random_uniform_real_posYFinal(marea, this->playa[i][1]);
+			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador);
+			//cout << posYfinalTortuga << endl;
+
+		}else {
+			//Tortuga debe posicionarse despues de la Berma.
+			int i = this->posYfinalTortuga(posTerreno);
+			uniform_real_distribution<double> random_uniform_real_posYFinal(marea, this->playa[i][3]);
+			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador) + this->playa[i][1]; //Se le debe sumar el trayecto de la marea a la berma
+			//cout << posYfinalTortuga << endl;
+		}
+
+		//Posicion de la tortuga
+		pair<int, int> posInicialTortuga(posXinicialTortuga, marea);
+		pair<int, int> posFinalTortuga(posXinicialTortuga, posYfinalTortuga);
+
+
+		++tic;
+
+	}
 }
 
 long Simulador::obtTotalTortugasArribaron()
@@ -270,14 +330,65 @@ void Simulador::leerDatos(ifstream & arch_entrada, vector<vector<T>>& vv, string
 	catch (exception e) {
 		cout << "valor invalido o fuera de limite" << endl;
 	}
-	
+	/*
 	for (auto f : vv) {
 		for (auto x : f) {
 			cout << x << ',' << endl;
 		}
 		cout << endl;
 	}
-	
+	*/
 	arch_entrada.close();
 }
 
+int Simulador::posYfinalTortuga(double posXinicialTortuga){
+
+	int indice;
+
+	if (posXinicialTortuga <= 100) {
+		indice = 0;
+	}
+	else if (posXinicialTortuga <= 200) {
+		indice = 1;
+	}
+	else if (posXinicialTortuga <= 300) {
+		indice = 2;
+	}
+	else if (posXinicialTortuga <= 400) {
+		indice = 3;
+	}
+	else if (posXinicialTortuga <= 500) {
+		indice = 4;
+	}
+	else if (posXinicialTortuga <= 600) {
+		indice = 5;
+	}
+	else if (posXinicialTortuga <= 700) {
+		indice = 6;
+	}
+	else if (posXinicialTortuga <= 800) {
+		indice = 7;
+	}
+	else if (posXinicialTortuga <= 900) {
+		indice = 8;
+	}
+	else if (posXinicialTortuga <= 1000) {
+		indice = 9;
+	}
+	else if (posXinicialTortuga <= 1100) {
+		indice = 10;
+	}
+	else if (posXinicialTortuga <= 1200) {
+		indice = 11;
+	}
+	else if (posXinicialTortuga <= 1300) {
+		indice = 12;
+	}
+	else if (posXinicialTortuga <= 1400) {
+		indice = 13;
+	}
+	else if (posXinicialTortuga <= 1500) {
+		indice = 14;
+	}
+	return indice;
+}
