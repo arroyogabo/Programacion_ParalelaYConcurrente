@@ -24,7 +24,7 @@ public:
 
 default_random_engine Aleatorizador::generador;
 uniform_real_distribution<double> Aleatorizador::random_uniform_real(0.0, 1.0);
-uniform_real_distribution<double> Aleatorizador::random_uniform_real(double limInferior, double limSuperior);
+//uniform_real_distribution<double> Aleatorizador::random_uniform_real(double limInferior, double limSuperior);
 
 double Aleatorizador::random_logistic(double location, double scale)
 {

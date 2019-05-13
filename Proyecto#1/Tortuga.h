@@ -121,11 +121,13 @@ Tortuga::EstadoTortuga Tortuga::obtNumEstado(int nE) {
 			break;
 		case 3:
 			estado = Tortuga::EstadoTortuga::poner;
+			break;
 		case 4:
 			estado = Tortuga::EstadoTortuga::tapar;
 			break;
 		case 5:
 			estado = Tortuga::EstadoTortuga::camuflar;
+			break;
 		case 6:
 			estado = Tortuga::EstadoTortuga::inactiva;
 			break;
@@ -205,9 +207,9 @@ void Tortuga::cambiarEstado(double proba) {
 		
 	}else {
 		if (this->contadorTicEstado == this->ticCambioEstado) {
-			
 			if (!this->desactivarse(proba)) {
 				++estado;
+				cout << this->estado << " " <<estado<< "  ";
 				this->estado = this->obtNumEstado(estado);
 				this->contadorTicEstado = 0;
 				cout << "Despues del cambio de estado : " << this->estado << endl;

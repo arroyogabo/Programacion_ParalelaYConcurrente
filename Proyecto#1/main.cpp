@@ -10,7 +10,7 @@ int main() {
 
 	Simulador s;
 	Aleatorizador::inicializar_generador_random();
-	s.simular(200);
+	s.simular(372);
 
 	cin.ignore();
 	return 0;
