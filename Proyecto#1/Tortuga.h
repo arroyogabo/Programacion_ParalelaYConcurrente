@@ -20,11 +20,15 @@ public:
 
 	// Obtenedores:
 	double obtVelocidad();
+	int obtTicSalida();
 	T_posicion obtPosicion();
+	T_posicion obtPosFinal();
 	EstadoTortuga obtEstado();
 
 	// Asignadores:
+	void asgTicSalida(int ticSalida);
 	void asgVelocidad(double nv);
+	void asgPosFinal(T_posicion posFinal);
 	void asgPosicion(T_posicion np);
 	void asgEstado(EstadoTortuga ne);
 
@@ -33,6 +37,8 @@ public:
 
 private:
 	double velocidad;
+	int ticSalida;
+	T_posicion posFinal;
 	T_posicion posicion; // posicion.first == coordenada X, posicion.second = coordenada Y
 	EstadoTortuga estado;
 };
@@ -71,6 +77,16 @@ Tortuga::EstadoTortuga Tortuga::obtEstado()
 	return this->estado;
 }
 
+Tortuga::T_posicion Tortuga::obtPosFinal() 
+{
+	return this->posFinal;
+}
+
+int Tortuga::obtTicSalida()
+{
+	return this->ticSalida;
+}
+
 void Tortuga::asgVelocidad(double nv)
 {
 	this->velocidad = nv;
@@ -86,9 +102,26 @@ void Tortuga::asgEstado(EstadoTortuga ne)
 	this->estado = ne;
 }
 
+void Tortuga::asgPosFinal(T_posicion posFinal)
+{
+	this->posFinal = posFinal;
+}
+
+void Tortuga::asgTicSalida(int ticSalida)
+{
+	this->ticSalida = ticSalida;
+}
+
 void Tortuga::avanzar(int tic)
 {
 	this->estado = vagar;
-	this->posicion.second += this->velocidad;
 
+	if (this->posicion.second >= this->posFinal.second) {
+		this->posicion.second = this->posFinal.second;
+	}
+	else {
+		this->posicion.second += this->velocidad;
+	}
+
+	
 }
