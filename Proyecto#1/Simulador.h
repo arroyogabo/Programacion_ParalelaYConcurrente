@@ -100,6 +100,7 @@ private:
 	template< typename T >
 	void leerDatos(ifstream& arch_entrada, vector< vector <T> >& vv, string arch_name);
 	int posYfinalTortuga(double indice);
+	
 
 	vector< vector<double> > playa;
 	vector< vector<int> > cuadrantes;
@@ -194,13 +195,17 @@ void Simulador::inicializarTortugas(int cntTortugas)
 	int posYSalidaTortuga;
 	int posTerreno;
 	int posYfinalTortuga;
+	int cambioDeEstado;
 	pair<int, int> posSalidaTortuga;
 	pair<int, int> posLlegadaTortuga;
 	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
 	double marea = this->mareas[0][0];
 	double vPromedio = comportamientoTortugas[0][6]; //Velocidad Promedio.
 	double desviacionVelocidad = comportamientoTortugas[0][7]; //Desviacion estandar de la velocidad.
+	double promedioDuracionCamada = this->comportamientoTortugas[0][9];
+	double desviacionCambio = this->comportamientoTortugas[0][10];
 	normal_distribution<double> distribution(vPromedio, desviacionVelocidad);
+	normal_distribution<double> distribucion_cambio_estado(promedioDuracionCamada, desviacionCambio);
 	
 	double escala = this->comportamientoTortugas[0][8];
 	
@@ -237,11 +242,14 @@ void Simulador::inicializarTortugas(int cntTortugas)
 
 		posLlegadaTortuga = make_pair(posXTortuga, posYfinalTortuga);
 
+		cambioDeEstado = (int)distribucion_cambio_estado(Aleatorizador::generador) / 5;
+
 		Tortuga * tortuga = new Tortuga();
 		tortuga->asgVelocidad(vT);
 		tortuga->asgTicSalida(ticSalida);
 		tortuga->asgPosicion(posSalidaTortuga);
 		tortuga->asgPosFinal(posLlegadaTortuga);
+		tortuga->asgTicCambioEstado(cambioDeEstado);
 
 		this->Tortugas.push_back(tortuga);
 	}
@@ -265,31 +273,52 @@ void Simulador::simular(int total_tics)
 	this->inicializarArribada(e);
 	this->inicializarMarea(e);
 	this->inicializarTransectoBerma(e);
-	this->inicializarTortugas(10);
+	this->inicializarTortugas(1);
 
 	
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 1; ++i) {
 		Tortuga * t = Tortugas[i];
 		cout<< i << " Velocidad "<< t->obtVelocidad() << endl;
 		cout << "Tic de salida " << t->obtTicSalida() << endl;
 		cout << "Posicion " << t->obtPosicion().first << " , "<< t->obtPosicion().second << endl;
-		cout << "Posicion " << t->obtPosFinal().first << " , "<< t->obtPosFinal().second << "\n"<< endl;
+		cout << "Posicion Final " << t->obtPosFinal().first << " , "<< t->obtPosFinal().second << "\n"<< endl;
 	}
 	
 	
 	int tic = 0;
+	int estado;
+	double proba;
 	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
 	double marea = this->mareas[0][0];
+	Tortuga::EstadoTortuga estadoTortuga;
 	
 
 	while (tic < total_tics) {
 		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
-		if (tic >= 176 || tic <= 196 ) {
+		if (tic >= 170) {
 			for (int i = 0; i < Tortugas.size(); ++i) {
-				if (Tortugas[i]->obtTicSalida() >= tic && Tortugas[i]->obtEstado != "inactiva") {
+				//Salida de las tortugas.
+				if (Tortugas[i]->obtTicSalida() == tic && !Tortugas[i]->obtSalio()) {
 					Tortugas[i]->avanzar(tic);
-					cout << i << " Pos actual: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
+					Tortugas[i]->asgSalio(); //Cambia el booleano de salida de la Tortuga a true.
+ 					cout << i << " Posicion de salida: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
 					cout << endl;
+
+				}
+
+				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() == Tortuga::EstadoTortuga::vagar) {
+					Tortugas[i]->avanzar(tic);
+					cout << "Avanzando ..." << endl;
+				}
+
+				if (Tortugas[i]->obtPosicion() == Tortugas[i]->obtPosFinal() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
+					//cout <<" Posicion final: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
+					estado = Tortugas[i]->obtEstado();
+					cout << "Estado actual : " << estado << endl;
+					proba = this->comportamientoTortugas[0][estado];
+					Tortugas[i]->cambiarEstado(proba);
+					estado = Tortugas[i]->obtEstado();
+
 				}
 			}
 		}
@@ -431,4 +460,3 @@ int Simulador::posYfinalTortuga(double posXinicialTortuga){
 	}
 	return indice;
 }
-
