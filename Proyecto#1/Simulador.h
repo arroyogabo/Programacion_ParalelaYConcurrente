@@ -57,12 +57,12 @@ public:
 
 	// EFE: crea la cantidad indicada de tortugas y las inicializa usando la distribuci�n normal
 	// con el promedio y desviaci�n dados para la velocidad.
-	void inicializarTortugas(ifstream& comportamiento_tortugas);
+	void inicializarTortugas(int cntTortugas);
 
 
 	// EFE: distribuye la cantidad total de tortugas que arriban, minuto a minuto, durante 360
 	// minutos o 6 horas, siguiendo la distribuci�n log�stica con par�metros u y s.
-	void inicializarArribada(double u, double s);
+	void inicializarArribada(ifstream& comportamiento_tortugas);
 
 	// EFE: guarda los par�metros de la funci�n sinusoidal que se usa para generar la altura de la
 	// marea minuto a minuto por 360 minutos o 6 horas.
@@ -113,6 +113,7 @@ private:
 	vector<Tortuga*> Tortugas; //Se almacenan las tortugas a simular.
 	vector<pair<int, int>> posicionesFinalesTortugas; //Relacion 1:1 con Tortugas, para saber su posicion final.
 
+	int totalTics;
 	long totalTortugasArribaron;
 	long totalTortugasAnidaron;
 	double estimacionXtransectosSobreBerma;
@@ -180,56 +181,40 @@ void Simulador::inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berm
 	}
 }
 
-void Simulador::inicializarTortugas(ifstream& comportamiento_tortugas)
+void Simulador::inicializarArribada(ifstream& comportamiento_tortugas)
 {
 	this->comportamientoTortugas.clear();
 
 	this->leerDatos(comportamiento_tortugas, this->comportamientoTortugas, "comportamiento_tortugas.csv");
 }
 
-void Simulador::inicializarArribada(double u, double s)
+void Simulador::inicializarTortugas(int cntTortugas)
 {
-}
-
-void Simulador::inicializarMarea(ifstream& arch_marea)
-{
-	this->mareas.clear();
-
-	this->leerDatos(arch_marea, this->mareas, "marea.csv");
-}
-
-void Simulador::simular(int total_tics)
-{
-	//Pruebas inicializadores
-	ifstream e;
-	this->inicializarPlaya(e);
-	this->inicializarCuadrantes(e);
-	this->inicializarTransectosVerticales(e);
-	this->inicializarTortugas(e);
-	this->inicializarMarea(e);
-	this->inicializarTransectoBerma(e);
-	
-	//Generacion aleatoria de la velocidad de la tortuga.
+	int posXTortuga;
+	int posYSalidaTortuga;
+	int posTerreno;
+	int posYfinalTortuga;
+	pair<int, int> posSalidaTortuga;
+	pair<int, int> posLlegadaTortuga;
+	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
+	double marea = this->mareas[0][0];
 	double vPromedio = comportamientoTortugas[0][6]; //Velocidad Promedio.
 	double desviacionVelocidad = comportamientoTortugas[0][7]; //Desviacion estandar de la velocidad.
 	normal_distribution<double> distribution(vPromedio, desviacionVelocidad);
-	double vT = distribution(Aleatorizador::generador); //vT velocidad de la tortuga.
 	
-	int tic = 0;
-	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
-	double marea = this->mareas[0][0];
-	double posXinicialTortuga;
-	int posTerreno;
-	int posYfinalTortuga;
+	double escala = this->comportamientoTortugas[0][8];
+	
+	for (int i = 0; i < cntTortugas; ++i) {
+		//Generacion aleatoria de la velocidad de la tortuga.
+		double vT = distribution(Aleatorizador::generador); //vT velocidad de la tortuga.
+		double ticSalida = Aleatorizador::random_logistic(0, escala);
+		ticSalida += totalTics / 2;
 
-	while (tic < total_tics) {
-		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
-		/*
-		//Calculo de la posicion inicial de la tortuga
+		//Calculo de la posicion de salida de la tortuga.
 		uniform_real_distribution<double> random_uniform_real_X(0, this->transectoParaleloBerma[1][1]); //Pos X inicial tortuga;
-		posXinicialTortuga = random_uniform_real_X(Aleatorizador::generador);
-		pair<int, int> posInicial((int)posXinicialTortuga, (int)marea);
-		*/
+		posXTortuga = (int)random_uniform_real_X(Aleatorizador::generador); 
+		posYSalidaTortuga = marea + (pendiente * ticSalida);
+		posSalidaTortuga = make_pair(posXTortuga, posYSalidaTortuga); //Posicion de salida(X,Y).
 
 		//Calculo de la posicion final de la tortuga
 		uniform_real_distribution<double> random_uniform_real_posTerreno(0, 100); //Probabilidad de caer antes o despues de la berma.
@@ -241,21 +226,75 @@ void Simulador::simular(int total_tics)
 			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador);
 			//cout << posYfinalTortuga << endl;
 
-		}else {
+		}
+		else {
 			//Tortuga debe posicionarse despues de la Berma.
 			int i = this->posYfinalTortuga(posTerreno);
 			uniform_real_distribution<double> random_uniform_real_posYFinal(marea, this->playa[i][3]);
 			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador) + this->playa[i][1]; //Se le debe sumar el trayecto de la marea a la berma
-			//cout << posYfinalTortuga << endl;
+																												 //cout << posYfinalTortuga << endl;
 		}
 
-		//Posicion de la tortuga
-		pair<int, int> posInicialTortuga(posXinicialTortuga, marea);
-		pair<int, int> posFinalTortuga(posXinicialTortuga, posYfinalTortuga);
+		posLlegadaTortuga = make_pair(posXTortuga, posYfinalTortuga);
 
+		Tortuga * tortuga = new Tortuga();
+		tortuga->asgVelocidad(vT);
+		tortuga->asgTicSalida(ticSalida);
+		tortuga->asgPosicion(posSalidaTortuga);
+		tortuga->asgPosFinal(posLlegadaTortuga);
 
+		this->Tortugas.push_back(tortuga);
+	}
+}
+
+void Simulador::inicializarMarea(ifstream& arch_marea)
+{
+	this->mareas.clear();
+
+	this->leerDatos(arch_marea, this->mareas, "marea.csv");
+}
+
+void Simulador::simular(int total_tics)
+{
+	this->totalTics = total_tics;
+	//Pruebas inicializadores
+	ifstream e;
+	this->inicializarPlaya(e);
+	this->inicializarCuadrantes(e);
+	this->inicializarTransectosVerticales(e);
+	this->inicializarArribada(e);
+	this->inicializarMarea(e);
+	this->inicializarTransectoBerma(e);
+	this->inicializarTortugas(10);
+
+	
+	for (int i = 0; i < 10; ++i) {
+		Tortuga * t = Tortugas[i];
+		cout<< i << " Velocidad "<< t->obtVelocidad() << endl;
+		cout << "Tic de salida " << t->obtTicSalida() << endl;
+		cout << "Posicion " << t->obtPosicion().first << " , "<< t->obtPosicion().second << endl;
+		cout << "Posicion " << t->obtPosFinal().first << " , "<< t->obtPosFinal().second << "\n"<< endl;
+	}
+	
+	
+	int tic = 0;
+	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
+	double marea = this->mareas[0][0];
+	
+
+	while (tic < total_tics) {
+		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
+		if (tic >= 176 || tic <= 196 ) {
+			for (int i = 0; i < Tortugas.size(); ++i) {
+				if (Tortugas[i]->obtTicSalida() >= tic && Tortugas[i]->obtEstado != "inactiva") {
+					Tortugas[i]->avanzar(tic);
+					cout << i << " Pos actual: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
+					cout << endl;
+				}
+			}
+		}
+		
 		++tic;
-
 	}
 }
 
@@ -392,3 +431,4 @@ int Simulador::posYfinalTortuga(double posXinicialTortuga){
 	}
 	return indice;
 }
+
