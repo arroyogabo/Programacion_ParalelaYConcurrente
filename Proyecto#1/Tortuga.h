@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utility>
+#include "Aleatorizador.h"
 using namespace std;
 
 class Tortuga
@@ -18,29 +19,46 @@ public:
 
 	~Tortuga();
 
+	void cambiarEstado(double proba);
+
 	// Obtenedores:
-	double obtVelocidad();
 	int obtTicSalida();
+	int obtTicCambioEstado();
+	int obtContadorTicEstado();
+	double obtVelocidad();
+	bool obtSalio();
 	T_posicion obtPosicion();
 	T_posicion obtPosFinal();
 	EstadoTortuga obtEstado();
+	EstadoTortuga obtNumEstado(int nE); //numEstado
 
 	// Asignadores:
 	void asgTicSalida(int ticSalida);
 	void asgVelocidad(double nv);
+	void asgSalio();
 	void asgPosFinal(T_posicion posFinal);
 	void asgPosicion(T_posicion np);
 	void asgEstado(EstadoTortuga ne);
+	void asgTicCambioEstado(int ticCambio);
+	void asgContadorTicEstado();
+	
 
 	// EFE: avanza *this seg�n su velocidad y evoluciona su estado en el tic que le toque.
 	void avanzar(int tic);
 
 private:
-	double velocidad;
+	bool desactivarse(double proba);
+
 	int ticSalida;
+	int ticCambioEstado;
+	int contadorTicEstado;
+	double velocidad;
+	bool salio;
 	T_posicion posFinal;
 	T_posicion posicion; // posicion.first == coordenada X, posicion.second = coordenada Y
 	EstadoTortuga estado;
+
+
 };
 
 Tortuga::Tortuga()
@@ -48,6 +66,8 @@ Tortuga::Tortuga()
 	this->velocidad = 1.0;
 	this->estado = inactiva;
 	this->posicion = make_pair(0, 0);
+	this->salio = false;
+	this->contadorTicEstado = 0;
 }
 
 Tortuga::Tortuga(double v, EstadoTortuga e, T_posicion p)
@@ -67,6 +87,11 @@ double Tortuga::obtVelocidad()
 	return this->velocidad;
 }
 
+bool Tortuga::obtSalio()
+{
+	return this->salio;
+}
+
 Tortuga::T_posicion Tortuga::obtPosicion()
 {
 	return this->posicion;
@@ -82,9 +107,40 @@ Tortuga::T_posicion Tortuga::obtPosFinal()
 	return this->posFinal;
 }
 
+Tortuga::EstadoTortuga Tortuga::obtNumEstado(int nE) {
+	Tortuga::EstadoTortuga estado;
+	switch (nE)
+	{
+		case 0:
+			estado = Tortuga::EstadoTortuga::vagar;
+			break;
+		case 1:
+			estado = Tortuga::EstadoTortuga::camar;
+		case 2:
+			estado = Tortuga::EstadoTortuga::excavar;
+			break;
+		case 3:
+			estado = Tortuga::EstadoTortuga::poner;
+		case 4:
+			estado = Tortuga::EstadoTortuga::tapar;
+			break;
+		case 5:
+			estado = Tortuga::EstadoTortuga::camuflar;
+		case 6:
+			estado = Tortuga::EstadoTortuga::inactiva;
+			break;
+
+	}
+	return estado;
+}
+
 int Tortuga::obtTicSalida()
 {
 	return this->ticSalida;
+}
+
+int Tortuga::obtTicCambioEstado() {
+	return this->ticCambioEstado;
 }
 
 void Tortuga::asgVelocidad(double nv)
@@ -112,6 +168,16 @@ void Tortuga::asgTicSalida(int ticSalida)
 	this->ticSalida = ticSalida;
 }
 
+void Tortuga::asgSalio() {
+	
+	this->salio = true; 
+
+}
+
+void Tortuga::asgTicCambioEstado(int ticCambio) {
+	this->ticCambioEstado = ticCambio;
+}
+
 void Tortuga::avanzar(int tic)
 {
 	this->estado = vagar;
@@ -123,5 +189,48 @@ void Tortuga::avanzar(int tic)
 		this->posicion.second += this->velocidad;
 	}
 
-	
+}
+
+void Tortuga::cambiarEstado(double proba) {
+	int estado = this->obtEstado();
+	if (estado == 0) {
+
+		if (!this->desactivarse(proba)) {
+			this->estado = camar;
+			cout << "Despues del cambio de estado : " << this->estado << endl;
+		}
+		else {
+			this->estado = inactiva;
+		}
+		
+	}else {
+		if (this->contadorTicEstado == this->ticCambioEstado) {
+			
+			if (!this->desactivarse(proba)) {
+				++estado;
+				this->estado = this->obtNumEstado(estado);
+				this->contadorTicEstado = 0;
+				cout << "Despues del cambio de estado : " << this->estado << endl;
+			}
+			else {
+				this->estado = inactiva;
+			}
+		}
+		else {
+			++this->contadorTicEstado;
+		}
+	}	
+}
+
+bool Tortuga::desactivarse(double proba) {
+	bool desactivar = false;
+	double azar;
+	uniform_real_distribution<double> random_uniform_real(0.0, 1.0); //Pos X inicial tortuga;
+	azar = random_uniform_real(Aleatorizador::generador);
+	cout << "Proba de desactivarse " << azar << endl;
+	if (azar <= proba) {
+		desactivar = true;
+	}
+
+	return desactivar;
 }
