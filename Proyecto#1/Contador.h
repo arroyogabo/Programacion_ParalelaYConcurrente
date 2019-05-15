@@ -19,11 +19,14 @@ public:
 	~Contador();
 
 	// Obtenedores:
+	int obtContadorTics();
+	bool estaContando();
 	double obtVelocidad();
 	T_posicion obtPosicion();
 	EstadoContador obtEstado();
 
-	// Asignadores:
+	void aumentarTic();
+	void cambiarEstado();
 	void asgVelocidad(double nv);
 	void asgPosicion(T_posicion np);
 	void asgEstado(EstadoContador ne);
@@ -32,6 +35,8 @@ public:
 	void avanzar(int tic);
 
 private:
+	int contadorTics;
+	bool contando;
 	double velocidad;
 	T_posicion posicion; // posicion.first == coordenada X, posicion.second = coordenada Y
 	EstadoContador estado;
@@ -42,6 +47,8 @@ Contador::Contador()
 	this->velocidad = 1.0;
 	this->posicion = make_pair(0, 0);
 	this->estado = esperar;
+	this->contando = false;
+	this->contadorTics = 0;
 }
 
 Contador::Contador(double v, Contador::EstadoContador e, T_posicion p)
@@ -53,6 +60,14 @@ Contador::Contador(double v, Contador::EstadoContador e, T_posicion p)
 
 Contador::~Contador()
 {
+}
+
+int Contador::obtContadorTics() {
+	return this->contadorTics;
+}
+
+bool Contador::estaContando() {
+	return this->contando;
 }
 
 double Contador::obtVelocidad()
@@ -88,4 +103,19 @@ void Contador::asgEstado(EstadoContador ne)
 void Contador::avanzar(int tic)
 {
 
+}
+
+void Contador::cambiarEstado() {
+	this->contadorTics = 0;
+	this->contando = !contando; 
+	if (contando) {
+		this->estado = contar;
+	}else {
+		this->estado = esperar;
+	}
+	//cout << this->estado << endl;
+}
+
+void Contador::aumentarTic() {
+	++this->contadorTics;
 }
