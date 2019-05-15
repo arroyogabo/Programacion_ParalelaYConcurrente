@@ -10,6 +10,7 @@ bool tieneDivisor(int num, int limSuperior) {
 	for (int i = 2; i <= limSuperior; ++i) {
 		if (num%i == 0) {
 			tieneDivisor = true;
+			break;
 		}
 	}
 	return tieneDivisor;
