@@ -1,2 +1,3 @@
-# LAB-1_PPC
-Repositorio del primer laboratorio de la asignatura "Programación paralela y concurrente (PPC)".
+# Programacion paralela y concurrente.
+Repositorio de la asignatura "Programación paralela y concurrente (PPC)".
+  OpenMP
