@@ -115,6 +115,7 @@ private:
 	vector<pair<int, int>> posicionesFinalesTortugas; //Relacion 1:1 con Tortugas, para saber su posicion final.
 
 	int totalTics = 0;
+	int tortugasAnidadasTV = 0;
 	long totalTortugasArribaron = 0;
 	long totalTortugasAnidaron = 0;
 	double estimacionXtransectosSobreBerma;
@@ -156,16 +157,31 @@ void Simulador::inicializarCuadrantes(ifstream& arch_cuadrantes)
 
 void Simulador::inicializarTransectosVerticales(ifstream& arch_transectos_verticales)
 {
-	this->transectosVerticales.clear();
+	int largoPlaya = 0;
+	pair<int, int> posContador;
 
+	for (int i = 0; i < this->playa.size(); ++i) {
+		largoPlaya += this->playa[i][0];
+	}
+	
 	this->leerDatos(arch_transectos_verticales, this->transectosVerticales, "transectos_verticales.csv");
-
+	
 	int cntContadores = this->transectosVerticales[0][0];
+	int cantMetrosPorCont = largoPlaya / cntContadores;
 
-	for (int i = 0; i < cntContadores; ++i) {
+	this->transectosVerticales.clear();
+	int mareaMedia = (this->mareas[0][1] + this->mareas[0][0]) / 2;
+
+	for (int i = 1; i <= cntContadores; ++i) {
+		posContador.first = (cantMetrosPorCont * i) - 1; //Posicion X del contador 
+		posContador.second = mareaMedia + this->playa[posYfinalTortuga(posContador.first)][1]; //Fila = distancia de marea media a la berma por sector X
 		Contador* c = new Contador();
+
+		c->asgPosicion(posContador);
+
 		contadoresTV.push_back(c);
 	}
+	
 }
 
 void Simulador::inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berma)
@@ -220,10 +236,11 @@ void Simulador::inicializarTortugas(int cntTortugas)
 		posXTortuga = (int)random_uniform_real_X(Aleatorizador::generador); 
 		posYSalidaTortuga = marea + (pendiente * ticSalida);
 		posSalidaTortuga = make_pair(posXTortuga, posYSalidaTortuga); //Posicion de salida(X,Y).
-
+		//posSalidaTortuga = make_pair(49, 60);
 		//Calculo de la posicion final de la tortuga
 		uniform_real_distribution<double> random_uniform_real_posTerreno(0, 100); //Probabilidad de caer antes o despues de la berma.
 		posTerreno = (int)random_uniform_real_posTerreno(Aleatorizador::generador); //Entre 0 y 100
+		
 		if (posTerreno <= 25) {
 			//Tortuga debe posicionarse antes de la Berma
 			int i = this->posYfinalTortuga(posTerreno);
@@ -236,12 +253,11 @@ void Simulador::inicializarTortugas(int cntTortugas)
 			//Tortuga debe posicionarse despues de la Berma.
 			int i = this->posYfinalTortuga(posTerreno);
 			uniform_real_distribution<double> random_uniform_real_posYFinal(marea, this->playa[i][3]);
-			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador) + this->playa[i][1]; //Se le debe sumar el trayecto de la marea a la berma
-																												 //cout << posYfinalTortuga << endl;
+			posYfinalTortuga = (int)random_uniform_real_posYFinal(Aleatorizador::generador) + this->playa[i][1]; //Se le debe sumar el trayecto de la marea a la berma																									 //cout << posYfinalTortuga << endl;
 		}
-
+		
 		posLlegadaTortuga = make_pair(posXTortuga, posYfinalTortuga);
-
+		//posLlegadaTortuga = make_pair(49, 60);
 		cambioDeEstado = (int)distribucion_cambio_estado(Aleatorizador::generador) / 5;
 
 		Tortuga * tortuga = new Tortuga();
@@ -268,21 +284,24 @@ void Simulador::simular(int total_tics)
 	//Pruebas inicializadores
 	ifstream e;
 	this->inicializarPlaya(e);
+	this->inicializarMarea(e);
 	this->inicializarCuadrantes(e);
 	this->inicializarTransectosVerticales(e);
 	this->inicializarArribada(e);
-	this->inicializarMarea(e);
 	this->inicializarTransectoBerma(e);
-	this->inicializarTortugas(10);
+	this->inicializarTortugas(7000);
 
-	
-	for (int i = 0; i < 10; ++i) {
+
+	/*
+	for (int i = 0; i < 1000; ++i) {
 		Tortuga * t = Tortugas[i];
 		cout<< i << " Velocidad "<< t->obtVelocidad() << endl;
 		cout << "Tic de salida " << t->obtTicSalida() << endl;
 		cout << "Posicion " << t->obtPosicion().first << " , "<< t->obtPosicion().second << endl;
 		cout << "Posicion Final " << t->obtPosFinal().first << " , "<< t->obtPosFinal().second << "\n"<< endl;
 	}
+	*/
+	
 	
 	
 	int tic = 0;
@@ -295,6 +314,15 @@ void Simulador::simular(int total_tics)
 
 	while (tic < total_tics) {
 		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
+
+		for (int contador = 0; contador < this->contadoresTV.size(); ++contador) {
+			Contador * c = this->contadoresTV[contador];
+			c->aumentarTic();
+			if (c->obtContadorTics() == 15) { //15 = this->TV[0][1]
+				c->cambiarEstado();
+			}
+		}
+
 		if (tic >= 170) {
 			for (int i = 0; i < Tortugas.size(); ++i) {
 				//Salida de las tortugas.
@@ -321,15 +349,32 @@ void Simulador::simular(int total_tics)
 					estado = Tortugas[i]->obtEstado();
 					if (Tortugas[i]->obtAnido()) {
 						++totalTortugasAnidaron;
+						for (int contador = 0; contador < this->contadoresTV.size(); ++contador) {
+							Contador * c = this->contadoresTV[contador];
+							if (c->obtEstado() == Contador::EstadoContador::contar) { //15 = this->TV[0][1]
+								pair<int, int> posTortuga = Tortugas[i]->obtPosicion();
+								pair<int, int> posContador = c->obtPosicion();
+
+								if (posTortuga.first == posContador.first-1 || posTortuga.first == posContador.first + 1) { //Rango de 2 metros
+									if (posTortuga.second >= posContador.second) {
+										cout << Tortugas[i]->obtPosicion().first << endl;
+										++tortugasAnidadasTV;
+									}
+								}
+
+							}
+						}
 					}
 
 				}
 			}
 		}
-		
+	
 		++tic;
 	}
-	cout << this->totalTortugasAnidaron << endl;
+	//cout << this->totalTortugasAnidaron << endl;
+	cout << this->tortugasAnidadasTV << endl;
+	
 }
 
 long Simulador::obtTotalTortugasArribaron()
