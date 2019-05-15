@@ -114,9 +114,9 @@ private:
 	vector<Tortuga*> Tortugas; //Se almacenan las tortugas a simular.
 	vector<pair<int, int>> posicionesFinalesTortugas; //Relacion 1:1 con Tortugas, para saber su posicion final.
 
-	int totalTics;
-	long totalTortugasArribaron;
-	long totalTortugasAnidaron;
+	int totalTics = 0;
+	long totalTortugasArribaron = 0;
+	long totalTortugasAnidaron = 0;
 	double estimacionXtransectosSobreBerma;
 	double estimacionXtransectoHorizontal;
 	double estimacionXcuadrantes;
@@ -142,8 +142,8 @@ void Simulador::inicializarPlaya(ifstream& arch_secciones)
 void Simulador::inicializarCuadrantes(ifstream& arch_cuadrantes)
 {
 	this->cuadrantes.clear();
-	Contador c;
 	this->leerDatos(arch_cuadrantes, this->cuadrantes, "cuadrantes.csv");
+
 	
 	int cntContadores = this->cuadrantes[0][0];
 
@@ -160,7 +160,7 @@ void Simulador::inicializarTransectosVerticales(ifstream& arch_transectos_vertic
 
 	this->leerDatos(arch_transectos_verticales, this->transectosVerticales, "transectos_verticales.csv");
 
-	int cntContadores = this->cuadrantes[0][0];
+	int cntContadores = this->transectosVerticales[0][0];
 
 	for (int i = 0; i < cntContadores; ++i) {
 		Contador* c = new Contador();
@@ -174,7 +174,7 @@ void Simulador::inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berm
 
 	this->leerDatos(arch_transecto_paralelo_berma, this->transectoParaleloBerma, "transecto_paralelo_berma.csv");
 
-	int cntContadores = this->cuadrantes[0][0];
+	int cntContadores = this->transectoParaleloBerma[0][0];
 
 	for (int i = 0; i < cntContadores; ++i) {
 		Contador* c = new Contador();
@@ -273,10 +273,10 @@ void Simulador::simular(int total_tics)
 	this->inicializarArribada(e);
 	this->inicializarMarea(e);
 	this->inicializarTransectoBerma(e);
-	this->inicializarTortugas(1);
+	this->inicializarTortugas(10);
 
 	
-	for (int i = 0; i < 1; ++i) {
+	for (int i = 0; i < 10; ++i) {
 		Tortuga * t = Tortugas[i];
 		cout<< i << " Velocidad "<< t->obtVelocidad() << endl;
 		cout << "Tic de salida " << t->obtTicSalida() << endl;
@@ -290,7 +290,7 @@ void Simulador::simular(int total_tics)
 	double proba;
 	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
 	double marea = this->mareas[0][0];
-	Tortuga::EstadoTortuga estadoTortuga;
+	//Tortuga::EstadoTortuga estadoTortuga;
 	
 
 	while (tic < total_tics) {
@@ -301,23 +301,27 @@ void Simulador::simular(int total_tics)
 				if (Tortugas[i]->obtTicSalida() == tic && !Tortugas[i]->obtSalio()) {
 					Tortugas[i]->avanzar(tic);
 					Tortugas[i]->asgSalio(); //Cambia el booleano de salida de la Tortuga a true.
- 					cout << i << " Posicion de salida: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
+ 					//cout << i << " Posicion de salida: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
 					cout << endl;
 
 				}
 
 				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() == Tortuga::EstadoTortuga::vagar) {
 					Tortugas[i]->avanzar(tic);
-					cout << "Avanzando ..." << endl;
+					//cout << "Avanzando ..." << endl;
 				}
 
 				if (Tortugas[i]->obtPosicion() == Tortugas[i]->obtPosFinal() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
 					//cout <<" Posicion final: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
 					estado = Tortugas[i]->obtEstado();
-					cout << "Estado actual : " << estado << endl;
+					//cout << "Estado actual : " << estado << endl;
 					proba = this->comportamientoTortugas[0][estado];
 					Tortugas[i]->cambiarEstado(proba);
+
 					estado = Tortugas[i]->obtEstado();
+					if (Tortugas[i]->obtAnido()) {
+						++totalTortugasAnidaron;
+					}
 
 				}
 			}
@@ -325,6 +329,7 @@ void Simulador::simular(int total_tics)
 		
 		++tic;
 	}
+	cout << this->totalTortugasAnidaron << endl;
 }
 
 long Simulador::obtTotalTortugasArribaron()
