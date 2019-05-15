@@ -24,9 +24,9 @@ public:
 	// Obtenedores:
 	int obtTicSalida();
 	int obtTicCambioEstado();
-	int obtContadorTicEstado();
-	double obtVelocidad();
 	bool obtSalio();
+	bool obtAnido();
+	double obtVelocidad();
 	T_posicion obtPosicion();
 	T_posicion obtPosFinal();
 	EstadoTortuga obtEstado();
@@ -40,7 +40,6 @@ public:
 	void asgPosicion(T_posicion np);
 	void asgEstado(EstadoTortuga ne);
 	void asgTicCambioEstado(int ticCambio);
-	void asgContadorTicEstado();
 	
 
 	// EFE: avanza *this seg�n su velocidad y evoluciona su estado en el tic que le toque.
@@ -51,9 +50,10 @@ private:
 
 	int ticSalida;
 	int ticCambioEstado;
-	int contadorTicEstado;
-	double velocidad;
+	int contadorTicEstado; //Se usa localmente para el cambio de estado.
 	bool salio;
+	bool anido;
+	double velocidad;
 	T_posicion posFinal;
 	T_posicion posicion; // posicion.first == coordenada X, posicion.second = coordenada Y
 	EstadoTortuga estado;
@@ -67,6 +67,7 @@ Tortuga::Tortuga()
 	this->estado = inactiva;
 	this->posicion = make_pair(0, 0);
 	this->salio = false;
+	this->anido = false;
 	this->contadorTicEstado = 0;
 }
 
@@ -90,6 +91,11 @@ double Tortuga::obtVelocidad()
 bool Tortuga::obtSalio()
 {
 	return this->salio;
+}
+
+bool Tortuga::obtAnido() 
+{
+	return this->anido;
 }
 
 Tortuga::T_posicion Tortuga::obtPosicion()
@@ -116,6 +122,7 @@ Tortuga::EstadoTortuga Tortuga::obtNumEstado(int nE) {
 			break;
 		case 1:
 			estado = Tortuga::EstadoTortuga::camar;
+			break;
 		case 2:
 			estado = Tortuga::EstadoTortuga::excavar;
 			break;
@@ -199,7 +206,7 @@ void Tortuga::cambiarEstado(double proba) {
 
 		if (!this->desactivarse(proba)) {
 			this->estado = camar;
-			cout << "Despues del cambio de estado : " << this->estado << endl;
+			//cout << "Despues del cambio de estado : " << this->estado << endl;
 		}
 		else {
 			this->estado = inactiva;
@@ -209,10 +216,12 @@ void Tortuga::cambiarEstado(double proba) {
 		if (this->contadorTicEstado == this->ticCambioEstado) {
 			if (!this->desactivarse(proba)) {
 				++estado;
-				cout << this->estado << " " <<estado<< "  ";
 				this->estado = this->obtNumEstado(estado);
+				if (this->estado == inactiva) { 
+					this->anido = true; //Si llego hasta "camuflar" quiere decir que anido con exito
+				}
 				this->contadorTicEstado = 0;
-				cout << "Despues del cambio de estado : " << this->estado << endl;
+				//cout << "Despues del cambio de estado : " << this->estado << endl;
 			}
 			else {
 				this->estado = inactiva;
@@ -228,11 +237,11 @@ bool Tortuga::desactivarse(double proba) {
 	bool desactivar = false;
 	double azar;
 	uniform_real_distribution<double> random_uniform_real(0.0, 1.0); //Pos X inicial tortuga;
-	azar = random_uniform_real(Aleatorizador::generador);
-	cout << "Proba de desactivarse " << azar << endl;
+	//azar = random_uniform_real(Aleatorizador::generador);
+	//cout << "Proba de desactivarse " << azar << endl;
+	azar = 0.8;
 	if (azar <= proba) {
 		desactivar = true;
 	}
-
 	return desactivar;
 }
