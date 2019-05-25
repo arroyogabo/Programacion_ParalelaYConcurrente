@@ -1,5 +1,6 @@
 #pragma once
 
+#include <omp.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -100,6 +101,7 @@ private:
 	template< typename T >
 	void leerDatos(ifstream& arch_entrada, vector< vector <T> >& vv, string arch_name);
 	int posYfinalTortuga(double indice);
+	void contarEnCuadrante(int i, int &contador);
 	
 
 	vector< vector<double> > playa;
@@ -113,6 +115,16 @@ private:
 	vector<Contador*> contadoresTPB; //Contadores Transecto Paralelo a la Berma.
 	vector<Tortuga*> Tortugas; //Se almacenan las tortugas a simular.
 	vector<pair<int, int>> posicionesFinalesTortugas; //Relacion 1:1 con Tortugas, para saber su posicion final.
+
+	//DATOS PARA CONTADOR CUADRANTES
+	int cntTortugasAnidaronC = 0;
+	int cntTortugasExcavandoC = 0;
+	int cntTortugasVagandoC = 0;
+	
+
+	//DATOS PARA COTADOR TPB
+	int cntTortugasTPB = 0;
+
 
 	int totalTics = 0;
 	int tortugasAnidadasTV = 0;
@@ -142,14 +154,21 @@ void Simulador::inicializarPlaya(ifstream& arch_secciones)
 
 void Simulador::inicializarCuadrantes(ifstream& arch_cuadrantes)
 {
+
+	pair<int, int> posContador;
 	this->cuadrantes.clear();
 	this->leerDatos(arch_cuadrantes, this->cuadrantes, "cuadrantes.csv");
 
 	
 	int cntContadores = this->cuadrantes[0][0];
 
-	for (int i = 0; i < cntContadores; ++i) {
+	for (int i = 1; i <= cntContadores; ++i) {
 		Contador* c = new Contador();
+		posContador.first = this->cuadrantes[1][0];
+		posContador.second = this->cuadrantes[1][1];
+
+		c->asgPosicion(posContador);
+
 		contadoresC.push_back(c);
 	}
 
@@ -189,11 +208,22 @@ void Simulador::inicializarTransectoBerma(ifstream& arch_transecto_paralelo_berm
 	this->transectoParaleloBerma.clear();
 
 	this->leerDatos(arch_transecto_paralelo_berma, this->transectoParaleloBerma, "transecto_paralelo_berma.csv");
-
+	
+	int mareaMedia = (this->mareas[0][1] + this->mareas[0][0]) / 2;
 	int cntContadores = this->transectoParaleloBerma[0][0];
+	double velocidad = 100.0; //100 mts por minuto.
 
+	//int cntContadores = 3;
 	for (int i = 0; i < cntContadores; ++i) {
 		Contador* c = new Contador();
+		pair<int, int> posContador;
+		//Siempre empieza al inicio de la playa de izquierda a derecha. 
+		posContador.first = 0;  
+		posContador.second = mareaMedia + this->playa[0][1]; 
+
+		c->asgPosicion(posContador);
+		c->asgVelocidad(velocidad);
+
 		contadoresTPB.push_back(c);
 	}
 }
@@ -289,8 +319,15 @@ void Simulador::simular(int total_tics)
 	this->inicializarTransectosVerticales(e);
 	this->inicializarArribada(e);
 	this->inicializarTransectoBerma(e);
-	this->inicializarTortugas(7000);
+	this->inicializarTortugas(70000);
 
+	int areaTotalBermaDuna = 0;
+	int d = 372;
+	int cntMuestreo = ((372 / this->cuadrantes[0][1])/2) * this->cuadrantes[0][0];
+	int medidaCuadrante = 10 * 10;
+	for (int i = 0; i < playa.size(); ++i) {
+		areaTotalBermaDuna += this->playa[i][3];
+	}
 
 	/*
 	for (int i = 0; i < 1000; ++i) {
@@ -302,18 +339,46 @@ void Simulador::simular(int total_tics)
 	}
 	*/
 	
-	
-	
 	int tic = 0;
+	int mareaMedia = (this->mareas[0][1] + this->mareas[0][0]) / 2;
 	int estado;
 	double proba;
 	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
 	double marea = this->mareas[0][0];
-	//Tortuga::EstadoTortuga estadoTortuga;
+	double wtime = 0.0;
 	
-
+	wtime = omp_get_wtime();
 	while (tic < total_tics) {
 		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
+
+		for (int contador = 0; contador < this->contadoresTPB.size(); ++contador) {
+			Contador * c = this->contadoresTPB[contador];
+			if (c->obtPosicion().first >= 0 || c->obtPosicion().first <= 1500) {
+				pair<int, int> posContador;
+				posContador.first = c->obtPosicion().first;
+				posContador.second = mareaMedia + this->playa[posYfinalTortuga(posContador.first)][1];
+				c->asgPosicion(posContador);
+			}
+
+			if (c->obtPosicion().first < 0 || c->obtPosicion().first > 1500) {
+				c->aumentarTic();
+				//c->cambiarEstado();
+				if (c->obtContadorTics() == 20 && c->obtPosicion().first > 1500) { //20 = this->TPB[0][1]
+					//El contador avanza en sentido derecha-izquierda (se devuelve).
+					c->cambiarEstado(); //Vuelve a contar despues de 20 min
+					c->avanzaIzquierda();
+					c->avanzar(tic); //Para devolverlo 
+				}else if(c->obtContadorTics() == 20 && c->obtPosicion().first < 0) {
+					//El contador avanza en sentido izquierda-derecha
+					c->cambiarEstado(); //Vuelve a contar despues de 20 min
+					c->avanzaDerecha();
+					c->avanzar(tic); //Para devolverlo 
+				}
+			}else {
+				c->avanzar(tic);
+			}
+			//cout << "PosContador TPB: " << c->obtPosicion().first << "  " << c->obtPosicion().second << endl;
+		}
 
 		for (int contador = 0; contador < this->contadoresTV.size(); ++contador) {
 			Contador * c = this->contadoresTV[contador];
@@ -323,6 +388,15 @@ void Simulador::simular(int total_tics)
 			}
 		}
 
+		for (int contador = 0; contador < this->contadoresC.size(); ++contador) {
+			Contador * c = this->contadoresC[contador];
+			c->aumentarTic();
+			if (c->obtContadorTics() == 15) { //15 = this->TPB[0][1]
+				c->cambiarEstado();
+			}
+		}
+
+
 		if (tic >= 170) {
 			for (int i = 0; i < Tortugas.size(); ++i) {
 				//Salida de las tortugas.
@@ -330,13 +404,32 @@ void Simulador::simular(int total_tics)
 					Tortugas[i]->avanzar(tic);
 					Tortugas[i]->asgSalio(); //Cambia el booleano de salida de la Tortuga a true.
  					//cout << i << " Posicion de salida: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
-					cout << endl;
+					//cout << endl;
 
+				}
+				//CONTEO DE TPB
+				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
+					for (int contador = 0; contador < contadoresTPB.size(); ++contador) {
+						int posXTortuga = Tortugas[i]->obtPosicion().first;
+						int posXContador = this->contadoresTPB[contador]->obtPosicion().first;
+						int posYTortuga = Tortugas[i]->obtPosicion().second;
+						int posYContador = this->contadoresTPB[contador]->obtPosicion().second;
+
+						if ( posXTortuga >= posXContador && posXTortuga <= (posXContador + 50)) {
+							if (posYTortuga >= posYContador && posYTortuga <= (posYContador + 15)) {
+								++this->cntTortugasTPB;
+							}
+						}
+					
+					}
 				}
 
 				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() == Tortuga::EstadoTortuga::vagar) {
 					Tortugas[i]->avanzar(tic);
 					//cout << "Avanzando ..." << endl;
+					
+					//CONTEO DE TORTUGAS VAGANDO EN CUADRANTES
+					this->contarEnCuadrante(i, this->cntTortugasVagandoC);
 				}
 
 				if (Tortugas[i]->obtPosicion() == Tortugas[i]->obtPosFinal() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
@@ -347,8 +440,18 @@ void Simulador::simular(int total_tics)
 					Tortugas[i]->cambiarEstado(proba);
 
 					estado = Tortugas[i]->obtEstado();
+					//CONTEO DE TORTUGAS QUE ANIDAN EN UN TRANSECTO
+					if (estado == Tortuga::EstadoTortuga::excavar) {
+						this->contarEnCuadrante(i, this->cntTortugasExcavandoC);
+					}
+
+					if (estado == Tortuga::EstadoTortuga::camuflar) {
+						this->contarEnCuadrante(i, this->cntTortugasAnidaronC);
+					}
+
 					if (Tortugas[i]->obtAnido()) {
 						++totalTortugasAnidaron;
+
 						for (int contador = 0; contador < this->contadoresTV.size(); ++contador) {
 							Contador * c = this->contadoresTV[contador];
 							if (c->obtEstado() == Contador::EstadoContador::contar) { //15 = this->TV[0][1]
@@ -357,7 +460,7 @@ void Simulador::simular(int total_tics)
 
 								if (posTortuga.first == posContador.first-1 || posTortuga.first == posContador.first + 1) { //Rango de 2 metros
 									if (posTortuga.second >= posContador.second) {
-										cout << Tortugas[i]->obtPosicion().first << endl;
+										//cout << Tortugas[i]->obtPosicion().first << endl;
 										++tortugasAnidadasTV;
 									}
 								}
@@ -369,11 +472,51 @@ void Simulador::simular(int total_tics)
 				}
 			}
 		}
-	
+
 		++tic;
 	}
+
+	wtime = omp_get_wtime() - wtime;
+	
+	///ESTIMADO DEL CONTEO EN CUADRANTES.
+	double estimadoCuadrantes = ((double)cntTortugasAnidaronC + (0.94 * (double)cntTortugasExcavandoC) + (0.47 * (double)cntTortugasVagandoC)); 
+	estimadoCuadrantes = estimadoCuadrantes * 1.25;
+	estimadoCuadrantes *= ((double)areaTotalBermaDuna / (double)medidaCuadrante);
+	estimadoCuadrantes *= (d / 60) / 64.8 * (double)cntMuestreo;
 	//cout << this->totalTortugasAnidaron << endl;
-	cout << this->tortugasAnidadasTV << endl;
+	//cout << this->tortugasAnidadasTV << endl;
+	//cout << "Cuadrantes v: " << cntTortugasVagandoC << endl;
+	//cout << "Cuadrantes a: " << cntTortugasAnidaronC << endl;
+	//cout << "Cuadrantes e: " << cntTortugasExcavandoC << endl;
+	//cout << "TPB: " << cntTortugasTPB << endl;
+	cout<< "Estimado cuadrantes: " << (int)estimadoCuadrantes << endl;
+
+	///ESTIMADO DEL CONTEO VERTICAL
+	double anchoTransecto = 2.0;
+	double longTV = 0.0;
+	
+	// 15 = this->transectosVerticales[0][0] / 2
+	for (int i = 0; i < 15; ++i) {
+		longTV += this->playa[i][3] * 2; //Distancia de la berma a la duna del sector i, se multiplica por 2 porque hay 2 transectos.
+	}
+	//cout << tortugasAnidadasTV << endl;
+	//cout << longTV << endl;
+	//cout << (double)this->comportamientoTortugas[0][9] / 5 << endl;
+	//cout << cntMuestreo << endl;
+
+	double estimadoTV = (double)areaTotalBermaDuna * (double)d;
+	estimadoTV /= (2 * 2.0 * 12.0 * longTV);
+	estimadoTV *= ((double)tortugasAnidadasTV / (double)this->comportamientoTortugas[0][9]/5);
+	cout<< "Estimado transectos verticales: "<< (int)estimadoTV << endl;
+
+	///ESTIMADO DEL CONTEO TPB
+	int tiempoDeEspera = this->transectoParaleloBerma[0][1];
+	int tiempoMuestreo = 15; //Avanza 100 mts por tic, en 15 tics termina un muestreo.
+	cntMuestreo = this->totalTics / (tiempoDeEspera + tiempoMuestreo);
+	double estimadoTPB = cntTortugasTPB * this->totalTics / (4.2*cntMuestreo);
+	cout << "Estimado transecto paralelo a la berma: "<< (int)estimadoTPB << endl;
+
+	cout << "En un tiempo de duracion: " << wtime << endl;
 	
 }
 
@@ -448,6 +591,7 @@ void Simulador::leerDatos(ifstream & arch_entrada, vector<vector<T>>& vv, string
 	catch (exception e) {
 		cout << "valor invalido o fuera de limite" << endl;
 	}
+
 	/*
 	for (auto f : vv) {
 		for (auto x : f) {
@@ -456,12 +600,13 @@ void Simulador::leerDatos(ifstream & arch_entrada, vector<vector<T>>& vv, string
 		cout << endl;
 	}
 	*/
+	
 	arch_entrada.close();
 }
 
 int Simulador::posYfinalTortuga(double posXinicialTortuga){
 
-	int indice;
+	int indice = 0;
 
 	if (posXinicialTortuga <= 100) {
 		indice = 0;
@@ -509,4 +654,26 @@ int Simulador::posYfinalTortuga(double posXinicialTortuga){
 		indice = 14;
 	}
 	return indice;
+}
+
+void Simulador::contarEnCuadrante(int i, int &contador) {
+
+	if (!Tortugas[i]->obtContada()) {
+		pair<int, int> posActualT = Tortugas[i]->obtPosicion();
+		for (int contadorC = 0; contadorC < contadoresC.size(); ++contadorC) {
+			if (posActualT.first >= this->cuadrantes[contadorC + 1][0] && posActualT.first <= this->cuadrantes[contadorC + 1][2]) {
+				//Cumple el rango del eje X para estar en uno de los cuadrantes
+				if (posActualT.second >= this->cuadrantes[contadorC + 1][1] && posActualT.second <= this->cuadrantes[contadorC + 1][3]) {
+					//Cumple el rango del eje Y para estar en uno de los cuadrantes
+					if (contadoresC[contadorC]->obtEstado() == Contador::EstadoContador::contar) {
+						//cout << "Entra" << endl;
+						++contador;
+						Tortugas[i]->contada(true);
+					}
+				}
+			}
+		}
+
+	}
+
 }
