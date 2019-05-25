@@ -26,6 +26,7 @@ public:
 	int obtTicCambioEstado();
 	bool obtSalio();
 	bool obtAnido();
+	bool obtContada();
 	double obtVelocidad();
 	T_posicion obtPosicion();
 	T_posicion obtPosFinal();
@@ -33,6 +34,8 @@ public:
 	EstadoTortuga obtNumEstado(int nE); //numEstado
 
 	// Asignadores:
+	void contada(bool contada);
+
 	void asgTicSalida(int ticSalida);
 	void asgVelocidad(double nv);
 	void asgSalio();
@@ -52,6 +55,7 @@ private:
 	int ticCambioEstado;
 	int contadorTicEstado; //Se usa localmente para el cambio de estado.
 	bool salio;
+	bool contadaT;
 	bool anido;
 	double velocidad;
 	T_posicion posFinal;
@@ -69,6 +73,7 @@ Tortuga::Tortuga()
 	this->salio = false;
 	this->anido = false;
 	this->contadorTicEstado = 0;
+	this->contadaT = false;
 }
 
 Tortuga::Tortuga(double v, EstadoTortuga e, T_posicion p)
@@ -206,6 +211,7 @@ void Tortuga::cambiarEstado(double proba) {
 
 		if (!this->desactivarse(proba)) {
 			this->estado = camar;
+			this->contadaT = false;
 			//cout << "Despues del cambio de estado : " << this->estado << endl;
 		}
 		else {
@@ -216,6 +222,7 @@ void Tortuga::cambiarEstado(double proba) {
 		if (this->contadorTicEstado == this->ticCambioEstado) {
 			if (!this->desactivarse(proba)) {
 				++estado;
+				this->contadaT = false;
 				this->estado = this->obtNumEstado(estado);
 				if (this->estado == inactiva) { 
 					this->anido = true; //Si llego hasta "camuflar" quiere decir que anido con exito
@@ -239,9 +246,21 @@ bool Tortuga::desactivarse(double proba) {
 	uniform_real_distribution<double> random_uniform_real(0.0, 1.0); //Pos X inicial tortuga;
 	//azar = random_uniform_real(Aleatorizador::generador);
 	//cout << "Proba de desactivarse " << azar << endl;
-	azar = 0.8;
+	azar = (rand() % 100);
+	azar /= 100;
+	//cout << azar << endl;
 	if (azar <= proba) {
 		desactivar = true;
 	}
 	return desactivar;
+}
+
+void Tortuga::contada(bool contada) {
+
+	this->contadaT = contada;
+}
+
+bool Tortuga::obtContada()
+{
+	return this->contadaT;
 }
