@@ -73,7 +73,7 @@ public:
 	// REQ: total_tics <= 360.
 	// EFE: simula el movimiento de las tortugas y el conteo de los contadores durante 6 horas.
 	// NOTA: la tarea de simular representada por este m�todo es la que debe paralelizarse usando hilos.
-	void simular(int total_tics);
+	void simular(int total_tics, int cntTortugas, int thread_count);
 
 	/*
 	* OBTENEDORES DE RESULTADOS DE LA SIMULACI�N
@@ -94,12 +94,15 @@ public:
 	// RET: estimaci�n del total de tortugas que anidaron con base en el m�todo de cuadrantes.
 	double obtEstimacionXcuadrantes();
 
-private:
 	//Lector de archivos
 	template < typename T, class F >
 	vector< vector< T > > carga_valida_datos(ifstream& archivo, F t) throw (invalid_argument, out_of_range);
 	template< typename T >
 	void leerDatos(ifstream& arch_entrada, vector< vector <T> >& vv, string arch_name);
+
+	void reiniciarSimulador();
+
+private:
 	int posYfinalTortuga(double indice);
 	void contarEnCuadrante(int i, int &contador);
 	
@@ -126,6 +129,7 @@ private:
 	int cntTortugasTPB = 0;
 
 
+	int thread_count = 0;
 	int totalTics = 0;
 	int tortugasAnidadasTV = 0;
 	long totalTortugasArribaron = 0;
@@ -143,6 +147,22 @@ Simulador::Simulador()
 
 Simulador::~Simulador()
 {
+	for (int i = 0; i < contadoresC.size(); ++i) {
+		delete contadoresC[i];
+	}
+	for (int i = 0; i < contadoresTV.size(); ++i) {
+		delete contadoresTV[i];
+	}
+	for (int i = 0; i < contadoresTPB.size(); ++i) {
+		delete contadoresTPB[i];
+	}
+	for (int i = 0; i < Tortugas.size(); ++i) {
+		delete Tortugas[i];
+	}
+	this->contadoresC.clear();
+	this->contadoresTV.clear();
+	this->contadoresTPB.clear();
+	this->Tortugas.clear();
 }
 
 void Simulador::inicializarPlaya(ifstream& arch_secciones)
@@ -254,7 +274,9 @@ void Simulador::inicializarTortugas(int cntTortugas)
 	normal_distribution<double> distribucion_cambio_estado(promedioDuracionCamada, desviacionCambio);
 	
 	double escala = this->comportamientoTortugas[0][8];
-	
+
+#	pragma omp parallel for num_threads(this->thread_count) \
+	firstprivate(posXTortuga, posYSalidaTortuga, posTerreno, posYfinalTortuga, cambioDeEstado, posSalidaTortuga, posLlegadaTortuga)
 	for (int i = 0; i < cntTortugas; ++i) {
 		//Generacion aleatoria de la velocidad de la tortuga.
 		double vT = distribution(Aleatorizador::generador); //vT velocidad de la tortuga.
@@ -296,8 +318,10 @@ void Simulador::inicializarTortugas(int cntTortugas)
 		tortuga->asgPosicion(posSalidaTortuga);
 		tortuga->asgPosFinal(posLlegadaTortuga);
 		tortuga->asgTicCambioEstado(cambioDeEstado);
-
-		this->Tortugas.push_back(tortuga);
+#	pragma omp critical 
+		{
+			this->Tortugas.push_back(tortuga);
+		}	
 	}
 }
 
@@ -308,9 +332,20 @@ void Simulador::inicializarMarea(ifstream& arch_marea)
 	this->leerDatos(arch_marea, this->mareas, "marea.csv");
 }
 
-void Simulador::simular(int total_tics)
+void Simulador::simular(int total_tics, int cntTortugas, int thread_count)
 {
 	this->totalTics = total_tics;
+	//int thread_count = 0;
+
+	/*
+	while (thread_count < 1) {
+		cout << "Ingrese la cantidad de hilos: " << endl;
+		cout << "Cantidad maxima de threads: " << omp_get_max_threads() << endl;
+		cin >> thread_count;
+	}
+	*/
+	this->thread_count = thread_count;
+
 	//Pruebas inicializadores
 	ifstream e;
 	this->inicializarPlaya(e);
@@ -319,15 +354,8 @@ void Simulador::simular(int total_tics)
 	this->inicializarTransectosVerticales(e);
 	this->inicializarArribada(e);
 	this->inicializarTransectoBerma(e);
-	this->inicializarTortugas(70000);
+	this->inicializarTortugas(cntTortugas);
 
-	int areaTotalBermaDuna = 0;
-	int d = 372;
-	int cntMuestreo = ((372 / this->cuadrantes[0][1])/2) * this->cuadrantes[0][0];
-	int medidaCuadrante = 10 * 10;
-	for (int i = 0; i < playa.size(); ++i) {
-		areaTotalBermaDuna += this->playa[i][3];
-	}
 
 	/*
 	for (int i = 0; i < 1000; ++i) {
@@ -346,7 +374,7 @@ void Simulador::simular(int total_tics)
 	double pendiente = (this->mareas[0][1] - this->mareas[0][0]) / (this->mareas[0][2]);  //Variacion de la marea  (Y2-Y1)/Tiempo
 	double marea = this->mareas[0][0];
 	double wtime = 0.0;
-	
+
 	wtime = omp_get_wtime();
 	while (tic < total_tics) {
 		marea += pendiente;  //Controla el crecimiento de la marea. Funciona como la coordena Y inicial de la tortuga.
@@ -398,6 +426,8 @@ void Simulador::simular(int total_tics)
 
 
 		if (tic >= 170) {
+
+#	pragma omp parallel for num_threads(thread_count)
 			for (int i = 0; i < Tortugas.size(); ++i) {
 				//Salida de las tortugas.
 				if (Tortugas[i]->obtTicSalida() == tic && !Tortugas[i]->obtSalio()) {
@@ -405,29 +435,28 @@ void Simulador::simular(int total_tics)
 					Tortugas[i]->asgSalio(); //Cambia el booleano de salida de la Tortuga a true.
  					//cout << i << " Posicion de salida: " << Tortugas[i]->obtPosicion().first << " , " << Tortugas[i]->obtPosicion().second << endl;
 					//cout << endl;
-
 				}
 				//CONTEO DE TPB
-				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
-					for (int contador = 0; contador < contadoresTPB.size(); ++contador) {
-						int posXTortuga = Tortugas[i]->obtPosicion().first;
-						int posXContador = this->contadoresTPB[contador]->obtPosicion().first;
-						int posYTortuga = Tortugas[i]->obtPosicion().second;
-						int posYContador = this->contadoresTPB[contador]->obtPosicion().second;
+					if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() != Tortuga::EstadoTortuga::inactiva) {
+						for (int contador = 0; contador < contadoresTPB.size(); ++contador) {
+							int posXTortuga = Tortugas[i]->obtPosicion().first;
+							int posXContador = this->contadoresTPB[contador]->obtPosicion().first;
+							int posYTortuga = Tortugas[i]->obtPosicion().second;
+							int posYContador = this->contadoresTPB[contador]->obtPosicion().second;
 
-						if ( posXTortuga >= posXContador && posXTortuga <= (posXContador + 50)) {
-							if (posYTortuga >= posYContador && posYTortuga <= (posYContador + 15)) {
-								++this->cntTortugasTPB;
+							if (posXTortuga >= posXContador && posXTortuga <= (posXContador + 50)) {
+								if (posYTortuga >= posYContador && posYTortuga <= (posYContador + 15)) {
+#						pragma omp atomic
+									++this->cntTortugasTPB;
+								}
 							}
-						}
-					
-					}
-				}
 
+						}
+					}
+				
 				if (Tortugas[i]->obtSalio() && Tortugas[i]->obtEstado() == Tortuga::EstadoTortuga::vagar) {
 					Tortugas[i]->avanzar(tic);
 					//cout << "Avanzando ..." << endl;
-					
 					//CONTEO DE TORTUGAS VAGANDO EN CUADRANTES
 					this->contarEnCuadrante(i, this->cntTortugasVagandoC);
 				}
@@ -450,6 +479,7 @@ void Simulador::simular(int total_tics)
 					}
 
 					if (Tortugas[i]->obtAnido()) {
+#					pragma omp atomic
 						++totalTortugasAnidaron;
 
 						for (int contador = 0; contador < this->contadoresTV.size(); ++contador) {
@@ -461,6 +491,7 @@ void Simulador::simular(int total_tics)
 								if (posTortuga.first == posContador.first-1 || posTortuga.first == posContador.first + 1) { //Rango de 2 metros
 									if (posTortuga.second >= posContador.second) {
 										//cout << Tortugas[i]->obtPosicion().first << endl;
+#								pragma omp atomic
 										++tortugasAnidadasTV;
 									}
 								}
@@ -479,6 +510,13 @@ void Simulador::simular(int total_tics)
 	wtime = omp_get_wtime() - wtime;
 	
 	///ESTIMADO DEL CONTEO EN CUADRANTES.
+	int areaTotalBermaDuna = 0;
+	int d = 372;
+	int cntMuestreo = ((372 / this->cuadrantes[0][1]) / 2) * this->cuadrantes[0][0];
+	int medidaCuadrante = 10 * 10;
+	for (int i = 0; i < playa.size(); ++i) {
+		areaTotalBermaDuna += this->playa[i][3];
+	}
 	double estimadoCuadrantes = ((double)cntTortugasAnidaronC + (0.94 * (double)cntTortugasExcavandoC) + (0.47 * (double)cntTortugasVagandoC)); 
 	estimadoCuadrantes = estimadoCuadrantes * 1.25;
 	estimadoCuadrantes *= ((double)areaTotalBermaDuna / (double)medidaCuadrante);
@@ -490,6 +528,7 @@ void Simulador::simular(int total_tics)
 	//cout << "Cuadrantes e: " << cntTortugasExcavandoC << endl;
 	//cout << "TPB: " << cntTortugasTPB << endl;
 	cout<< "Estimado cuadrantes: " << (int)estimadoCuadrantes << endl;
+	this->estimacionXcuadrantes = (int)estimadoCuadrantes;
 
 	///ESTIMADO DEL CONTEO VERTICAL
 	double anchoTransecto = 2.0;
@@ -505,9 +544,10 @@ void Simulador::simular(int total_tics)
 	//cout << cntMuestreo << endl;
 
 	double estimadoTV = (double)areaTotalBermaDuna * (double)d;
-	estimadoTV /= (2 * 2.0 * 12.0 * longTV);
+	estimadoTV /= (2.0 * 2.0 * 660.0 * longTV);
 	estimadoTV *= ((double)tortugasAnidadasTV / (double)this->comportamientoTortugas[0][9]/5);
 	cout<< "Estimado transectos verticales: "<< (int)estimadoTV << endl;
+	this->estimacionXtransectosSobreBerma = (int)estimadoTV;
 
 	///ESTIMADO DEL CONTEO TPB
 	int tiempoDeEspera = this->transectoParaleloBerma[0][1];
@@ -515,9 +555,9 @@ void Simulador::simular(int total_tics)
 	cntMuestreo = this->totalTics / (tiempoDeEspera + tiempoMuestreo);
 	double estimadoTPB = cntTortugasTPB * this->totalTics / (4.2*cntMuestreo);
 	cout << "Estimado transecto paralelo a la berma: "<< (int)estimadoTPB << endl;
+	this->estimacionXtransectoHorizontal = (int)estimadoTPB;
 
-	cout << "En un tiempo de duracion: " << wtime << endl;
-	
+	cout << "En tiempo de duracion de: " << wtime << "segundos." << endl;
 }
 
 long Simulador::obtTotalTortugasArribaron()
@@ -676,4 +716,37 @@ void Simulador::contarEnCuadrante(int i, int &contador) {
 
 	}
 
+}
+
+void Simulador::reiniciarSimulador() {
+	this->playa.clear();
+	this->cuadrantes.clear();
+	this->transectosVerticales.clear();
+	this->comportamientoTortugas.clear();
+	this->transectoParaleloBerma.clear();
+	this->mareas.clear();
+	this->contadoresC.clear();
+	this->contadoresTV.clear();
+	this->contadoresTPB.clear();
+	this->Tortugas.clear();
+	this->posicionesFinalesTortugas.clear();
+
+	//DATOS PARA CONTADOR CUADRANTES
+	this->cntTortugasAnidaronC = 0;
+	this->cntTortugasExcavandoC = 0;
+	this->cntTortugasVagandoC = 0;
+
+
+	//DATOS PARA COTADOR TPB
+	this->cntTortugasTPB = 0;
+
+
+	this->thread_count = 0;
+	this->totalTics = 0;
+	this->tortugasAnidadasTV = 0;
+	this->totalTortugasArribaron = 0;
+	this->totalTortugasAnidaron = 0;
+	this->estimacionXtransectosSobreBerma = 0;
+	this->estimacionXtransectoHorizontal = 0;
+	this->estimacionXcuadrantes = 0;
 }
