@@ -41,6 +41,8 @@ class Tortuga:
 		self.estado = Tortuga.EstadoTortuga.vagar
 		self.pos_final = 0, 0
 		self.pos_anidacion = 0, 0
+		#variables de la version de C
+		self.contada = False
 		return
 	
 	## EFE: retorna una hilera en formato JSON que representa a la tortuga
@@ -82,3 +84,26 @@ class Tortuga:
 			self.posicion[1] += self.velocidad
 		return
 	
+	def desactivarse (self, proba):
+    	
+		azar = np.random.uniform(0.0,1.0)
+		desactivado = False
+		print(azar)
+		if (azar <= proba):
+			desactivado = True
+		return desactivado
+	
+"""	def cambiarEstado (self,proba):
+		estado_actual = self.estado
+		if(estado_actual == 0):
+			if(!self.desactivarse(proba)):
+    			self.estado = self.EstadoTortuga.camar
+				self.contada = False
+			else:
+				self.estado = self.EstadoTortuga.inactiva
+		else:
+    		if()
+"""	
+
+	
+		
