@@ -43,7 +43,7 @@ class Tortuga:
 		self.pos_anidacion = 0, 0
 		#variables de la version de C
 		self.tic_actual =0
-		self.tic_Cambio_Estado=3
+		self.tic_Cambio_Estado=0
 		self.contada = False
 		return
 	
@@ -53,6 +53,9 @@ class Tortuga:
 		# se le pasa un tuple con el nombre de la clase y los valores de los atributos de self
 		return json.dumps((type(self).__name__, self.id, self.velocidad, self.posicion, self.pos_anidacion))
 	
+	def obt_contada(self):
+		return self.contada
+
 	def obt_id(self):
 		return self.id
 	
@@ -78,6 +81,14 @@ class Tortuga:
 	
 	def asg_pos_anidacion(self, pa):
 		self.pos_anidacion = pa
+		return
+	
+	def asg_tic_cambio(self, cantidad_tic):
+		self.tic_Cambio_Estado = cantidad_tic
+		return
+
+	def asg_contada(self):
+		self.contada = True
 		return
 	
 	def avanzar_estado(self, es):

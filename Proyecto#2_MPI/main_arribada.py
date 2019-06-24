@@ -71,9 +71,10 @@ def main():
 	
 	Simulador.simular(372)
 	print(Tortuga.desactivarse(Tortuga, 0.5))
-	tortu = Tortuga()
-	for i in range (0,20):
-		tortu.cambiarEstado(0.1)
+	conta = Contador()
+	print(conta.obt_posicion())
+	conta.avanzar()
+	print(conta.obt_posicion())
 	## OJO: el archivo esta en una carpeta "archivos"
 	
 main()

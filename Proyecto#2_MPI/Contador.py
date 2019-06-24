@@ -32,8 +32,9 @@ class Contador:
 		self.id = Contador.id
 		Contador.id += 1
 		self.velocidad = 6
-		self.posicion = random.randint(0, 1499), random.randint(0, 1499) ## OJO: así se crea un par ordenado, un tuple de dos valores
+		self.posicion = np.random.randint(0, 1499), np.random.randint(0, 1499) ## OJO: así se crea un par ordenado, un tuple de dos valores
 		self.estado = Contador.EstadoContador.esperar
+		self.avanza_derecha = True
 		return
 	
 	## EFE: retorna una hilera en formato JSON que representa a la Contador
@@ -61,5 +62,16 @@ class Contador:
 		
 	## EFE: avanza la Contador de acuerdo con su estado
 	def avanzar(self):
+		self.estado = self.EstadoContador.contar
+		if(self.avanza_derecha):
+			pos_x = self.posicion[0]
+			pos_y = self.posicion[1]
+			pos_x += self.velocidad
+			self.posicion = pos_x,pos_y
+		else:
+			pos_x = self.posicion[0]
+			pos_y = self.posicion[1]
+			pos_x -= self.velocidad
+			self.posicion = pos_x,pos_y
 		return
 	
