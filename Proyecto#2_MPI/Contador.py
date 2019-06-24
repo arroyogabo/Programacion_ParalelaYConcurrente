@@ -34,7 +34,10 @@ class Contador:
 		self.velocidad = 6
 		self.posicion = np.random.randint(0, 1499), np.random.randint(0, 1499) ## OJO: así se crea un par ordenado, un tuple de dos valores
 		self.estado = Contador.EstadoContador.esperar
+		#variables del C
 		self.avanza_derecha = True
+		self.contando = True
+		self.contador_Tics = True
 		return
 	
 	## EFE: retorna una hilera en formato JSON que representa a la Contador
@@ -59,7 +62,6 @@ class Contador:
 	def asg_posicion(self, pn):
 		self.posicion = pn
 		return
-		
 	## EFE: avanza la Contador de acuerdo con su estado
 	def avanzar(self):
 		self.estado = self.EstadoContador.contar
@@ -75,3 +77,12 @@ class Contador:
 			self.posicion = pos_x,pos_y
 		return
 	
+	def cambiar_estado(self):
+		self.contador_Tics=0
+		self.contando = not self.contando()
+		if (self.contando):
+    		self.estado= self.EstadoContador.contar
+		else:
+    		self.estado= self.EstadoContador.esperar
+		return
+
