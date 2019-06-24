@@ -71,6 +71,9 @@ def main():
 	
 	Simulador.simular(372)
 	print(Tortuga.desactivarse(Tortuga, 0.5))
+	tortu = Tortuga()
+	for i in range (0,20):
+		tortu.cambiarEstado(0.1)
 	## OJO: el archivo esta en una carpeta "archivos"
 	
 main()

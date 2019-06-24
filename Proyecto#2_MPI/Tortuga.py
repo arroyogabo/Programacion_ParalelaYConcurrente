@@ -42,6 +42,8 @@ class Tortuga:
 		self.pos_final = 0, 0
 		self.pos_anidacion = 0, 0
 		#variables de la version de C
+		self.tic_actual =0
+		self.tic_Cambio_Estado=3
 		self.contada = False
 		return
 	
@@ -53,7 +55,10 @@ class Tortuga:
 	
 	def obt_id(self):
 		return self.id
-		
+	
+	def obt_estado(self):
+		return self.estado
+
 	def obt_velocidad(self):
 		return self.velocidad
 	
@@ -74,6 +79,19 @@ class Tortuga:
 	def asg_pos_anidacion(self, pa):
 		self.pos_anidacion = pa
 		return
+	
+	def avanzar_estado(self, es):
+		if (es == self.EstadoTortuga.vagar):		
+			self.estado = self.EstadoTortuga.camar
+		elif (es == self.EstadoTortuga.camar):
+			self.estado = self.EstadoTortuga.excavar
+		elif (es == self.EstadoTortuga.excavar):
+			self.estado = self.EstadoTortuga.poner
+		elif (es == self.EstadoTortuga.poner):
+			self.estado = self.EstadoTortuga.camuflar
+		elif (es == self.EstadoTortuga.camuflar):
+			self.estado = self.EstadoTortuga.inactiva
+		return
 		
 		
 	## EFE: avanza la tortuga de acuerdo con su estado
@@ -88,22 +106,29 @@ class Tortuga:
     	
 		azar = np.random.uniform(0.0,1.0)
 		desactivado = False
-		print(azar)
 		if (azar <= proba):
 			desactivado = True
 		return desactivado
 	
-"""	def cambiarEstado (self,proba):
-		estado_actual = self.estado
-		if(estado_actual == 0):
-			if(!self.desactivarse(proba)):
-    			self.estado = self.EstadoTortuga.camar
-				self.contada = False
+	def cambiarEstado (self,proba):
+		if(self.estado == 0):#camando
+			if(self.desactivarse(proba)== False):
+				self.avanzar_estado(self.estado)
 			else:
 				self.estado = self.EstadoTortuga.inactiva
 		else:
-    		if()
-"""	
+			if(self.tic_actual ==self.tic_Cambio_Estado): #tic cambio de estado #########Falta asignar
+				if(self.desactivarse(proba)== False): #cambia de estado
+					self.avanzar_estado(self.estado)
+					self.tic_actual=0 #reinicia tic
+				else:
+					self.estado = self.EstadoTortuga.inactiva
+			else: #avanza un tic
+				self.tic_actual +=1
+		print(self.estado)
+		return
+    
+	
 
 	
 		
