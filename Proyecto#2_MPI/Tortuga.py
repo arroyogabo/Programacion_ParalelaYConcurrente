@@ -39,12 +39,14 @@ class Tortuga:
 		self.velocidad = np.random.normal(1.0, 0.5) ## promedio = 1.0 y desviación estándar = 0.5
 		self.posicion = random.randint(0, 1499), random.randint(0, 1499) ## OJO: así se crea un par ordenado, un tuple de dos valores
 		self.estado = Tortuga.EstadoTortuga.vagar
-		self.pos_final = 0, 0
 		self.pos_anidacion = 0, 0
 		#variables de la version de C
-		self.tic_actual =0
-		self.tic_Cambio_Estado=0
+		self.tic_actual = 0
+		self.tic_salida = 0
+		self.salio = False
+		self.tic_Cambio_Estado = 0 
 		self.contada = False
+		self.tiempos_estados = np.zeros(5)
 		return
 	
 	## EFE: retorna una hilera en formato JSON que representa a la tortuga
@@ -68,7 +70,7 @@ class Tortuga:
 	def obt_posicion(self):
 		return self.posicion
 		
-	def obt_posicion(self):
+	def obt_posicion_anidacion(self):
 		return self.pos_anidacion
 		
 	def asg_velocidad(self, vn):
@@ -99,6 +101,8 @@ class Tortuga:
 		elif (es == self.EstadoTortuga.excavar):
 			self.estado = self.EstadoTortuga.poner
 		elif (es == self.EstadoTortuga.poner):
+			self.estado = self.EstadoTortuga.tapar
+		elif (es == self.EstadoTortuga.tapar):
 			self.estado = self.EstadoTortuga.camuflar
 		elif (es == self.EstadoTortuga.camuflar):
 			self.estado = self.EstadoTortuga.inactiva
@@ -107,10 +111,15 @@ class Tortuga:
 		
 	## EFE: avanza la tortuga de acuerdo con su estado
 	def avanzar(self):
-		if( self.posicion[1] >= self.pos_final[1] ):
-			self.posicion[1] = self.pos_final[1]
+		if( self.posicion[1] >= self.pos_anidacion[1] ):
+			pos_x = self.posicion[0]
+			pos_y = self.pos_anidacion[1]
+			self.posicion = pos_x, pos_y
 		else:
-			self.posicion[1] += self.velocidad
+			pos_x = self.posicion[0]
+			pos_y = self.posicion[1]
+			pos_y += self.velocidad
+			self.posicion = pos_x, pos_y
 		return
 	
 	def desactivarse (self, proba):
@@ -121,25 +130,62 @@ class Tortuga:
 			desactivado = True
 		return desactivado
 	
-	def cambiarEstado (self,proba):
-		if(self.estado == 0):#camando
+	def cambiar_estado (self,proba):
+		if(self.estado == 0):#vagando
 			if(self.desactivarse(proba)== False):
 				self.avanzar_estado(self.estado)
+				self.tic_Cambio_Estado = self.tiempos_estados[0] #Pos estado - 1 contiene su respectivo tiempo.
 			else:
 				self.estado = self.EstadoTortuga.inactiva
 		else:
-			if(self.tic_actual ==self.tic_Cambio_Estado): #tic cambio de estado #########Falta asignar
-				if(self.desactivarse(proba)== False): #cambia de estado
+			if(self.tic_actual == self.tic_Cambio_Estado): #tic cambio de estado #########Falta asignar
+				if(self.desactivarse(proba)== False and not self.estado == Tortuga.EstadoTortuga.camuflar): #cambia de estado
 					self.avanzar_estado(self.estado)
+					estado_actual = self.estado_a_int(self.estado)
+					self.tic_Cambio_Estado = self.tiempos_estados[estado_actual - 1]
 					self.tic_actual=0 #reinicia tic
 				else:
 					self.estado = self.EstadoTortuga.inactiva
 			else: #avanza un tic
 				self.tic_actual +=1
-		print(self.estado)
 		return
-    
-	
-
-	
 		
+		
+	def asg_tic_salida(self, tic):
+		self.tic_salida = tic
+		
+	
+	def obt_tic_salida(self):
+		return self.tic_salida
+		
+	
+	def _salio(self):
+		self.salio = True
+		
+	
+	def obt_salio(self):
+		return self.salio
+		
+	def asg_tiempos_estado(self, tiempos):
+		self.tiempos_estados = tiempos
+		
+	def obt_tiempos_estado(self):
+		return self.tiempos_estados
+		
+	def estado_a_int(self, estado):
+		n = -1
+		if estado == Tortuga.EstadoTortuga.vagar:
+			n = 0
+		elif estado == Tortuga.EstadoTortuga.camar:
+			n = 1
+		elif estado == Tortuga.EstadoTortuga.excavar:
+			n = 2
+		elif estado == Tortuga.EstadoTortuga.poner:
+			n = 3	
+		elif estado == Tortuga.EstadoTortuga.tapar:
+			n = 4
+		elif estado == Tortuga.EstadoTortuga.camuflar:
+			n = 5
+		elif estado == Tortuga.EstadoTortuga.inactiva:
+			n = 6
+		return n
