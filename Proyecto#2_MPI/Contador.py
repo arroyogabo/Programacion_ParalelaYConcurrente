@@ -38,6 +38,7 @@ class Contador:
 		self.avanza_derecha = True
 		self.contando = True
 		self.contador_Tics = True
+		self.tiempo_muestreo = 0
 		return
 	
 	## EFE: retorna una hilera en formato JSON que representa a la Contador
@@ -81,8 +82,15 @@ class Contador:
 		self.contador_Tics=0
 		self.contando = not self.contando()
 		if (self.contando):
-    		self.estado= self.EstadoContador.contar
+			self.estado= self.EstadoContador.contar
 		else:
-    		self.estado= self.EstadoContador.esperar
+			self.estado= self.EstadoContador.esperar
 		return
 
+		
+	def asg_tiempo_muestreo(self, t_m):
+		self.tiempo_muestreo = t_m
+		
+		
+	def obt_tiempo_muestreo(self):
+		return self.tiempo_muestreo
