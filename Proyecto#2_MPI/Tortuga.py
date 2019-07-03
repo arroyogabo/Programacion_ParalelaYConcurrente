@@ -46,6 +46,8 @@ class Tortuga:
 		self.salio = False
 		self.tic_Cambio_Estado = 0 
 		self.contada = False
+		self.contada_c = False 	#Si se conto en cuadrantes
+		self.contada_tv = False	#Si se conto en transecto vertical
 		self.tiempos_estados = np.zeros(5)
 		return
 	
@@ -119,6 +121,7 @@ class Tortuga:
 			pos_x = self.posicion[0]
 			pos_y = self.posicion[1]
 			pos_y += self.velocidad
+			pos_y = int(pos_y)
 			self.posicion = pos_x, pos_y
 		return
 	
@@ -171,6 +174,18 @@ class Tortuga:
 		
 	def obt_tiempos_estado(self):
 		return self.tiempos_estados
+		
+	def obt_contada_en_c(self):
+		return self.contada_c
+		
+	def contar_en_c(self):	
+		self.contada_c = True
+		
+	def obt_contada_en_tv(self):
+		return self.contada_tv
+		
+	def contar_en_tv(self):
+		self.contada_tv = True
 		
 	def estado_a_int(self, estado):
 		n = -1
