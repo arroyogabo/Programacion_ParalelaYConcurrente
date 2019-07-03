@@ -64,6 +64,9 @@ class Simulador:
 			
 			pos_x_tortuga = np.random.uniform(0, cls.transecto_berma[1][1])
 			pos_y_salida = marea + (pendiente * tic_salida)
+			
+			pos_x_tortuga = int(pos_x_tortuga)
+			pos_y_salida = int(pos_y_salida)
 			pos_salida = pos_x_tortuga, pos_y_salida
 			
 			velocidad = np.random.normal(velocidad_promedio, desv_velocidad)
@@ -85,7 +88,8 @@ class Simulador:
 			else:
 				i = Simulador.pos_playa(pos_x_tortuga)
 				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)
-				
+			
+			pos_y_anidacion = int(pos_y_anidacion)
 			pos_anidacion = pos_x_tortuga, pos_y_anidacion
 			
 			
@@ -135,12 +139,16 @@ class Simulador:
 		
 		for i in range(1, cnt_contadores+1): # 1 - n
 			pos_x = (cnt_metros_por_contador * i) - 1
+			pos_x = int(pos_x)
 			pos_y = marea_media + cls.sectores_playa[cls.pos_playa(pos_x)][1]
+			pos_y = int(pos_y)
 			posicion = pos_x, pos_y
+			
 			contador_i = Contador()
 			contador_i.asg_tiempo_muestreo(cls.transectos_verticales[0][1])
 			contador_i.asg_posicion(posicion)
 			cls.contadores_tv.append(contador_i)
+			print(contador_i.toJSON())
 		
 		return
 	
@@ -165,13 +173,25 @@ class Simulador:
 		pendiente = (cls.marea[1] - cls.marea[0]) / cls.marea[2] 
 		marea_actual = cls.marea[0]
 		
+		
 		while(cls.tic < cls.tics): #Tic actual menor al total
 			marea_actual += pendiente	#Aumento de la marea por tic
+			
+			#Revision del estado de los contadores en los muestreos.
+			for contador in cls.contadores_cuadrantes:
+				contador.aumentar_tic()
+				if (contador.obt_contador_tics() == contador.obt_tiempo_muestreo()):
+					contador.cambiar_estado()
+					
+			for contador in cls.contadores_tv:
+				contador.aumentar_tic()
+				if (contador.obt_contador_tics() == contador.obt_tiempo_muestreo()):
+					contador.cambiar_estado()
 			
 			
 			if(cls.tic >= 170):
 				for tortuga in cls.tortugas:
-					
+					#Salida de las tortugas.
 					if(int(tortuga.obt_tic_salida()) == cls.tic and not tortuga.obt_salio()):
 						tortuga.avanzar()
 						tortuga._salio()
@@ -179,22 +199,54 @@ class Simulador:
 					
 					if(tortuga.obt_salio() and tortuga.obt_estado() == Tortuga.EstadoTortuga.vagar):
 						tortuga.avanzar()
+						Simulador.contar_en_cuadrantes(tortuga)
 						
 					if(tortuga.obt_posicion() == tortuga.obt_posicion_anidacion() and tortuga.obt_estado() is not Tortuga.EstadoTortuga.inactiva):
 						estado = tortuga.estado_a_int(tortuga.obt_estado())
 						proba = cls.comportamiento_tortugas[0][estado]
 						tortuga.cambiar_estado(proba)
 						
-					
-			
+					#Conteo en transecto vertical.
+					for contador in cls.contadores_tv:
+						if( not tortuga.obt_contada_en_tv()):
+							if(contador.obt_estado() == Contador.EstadoContador.contar):
+								pos_tortuga = tortuga.obt_posicion()
+								pos_contador = contador.obt_posicion()
+								
+								if(pos_tortuga[0] == (pos_contador[0] - 1) or pos_tortuga[0] == (pos_contador[0] + 1)):
+									if(pos_tortuga[1] >= pos_contador[1]):
+										cls.conteo_tsv += 1
+										tortuga.contar_en_tv()
+									
 			
 			cls.tic += 1
 		
+		print(cls.conteo_tsv)
+		return
+	
+	
+	@classmethod
+	def contar_en_cuadrantes(cls, tortuga):
+		if (not tortuga.obt_contada_en_c()):
+			pos_actual = tortuga.obt_posicion()
+			for i in range (0, len(cls.contadores_cuadrantes)):
+				if(pos_actual[0] >= cls.cuadrantes[i + 1][0]):
+					if(pos_actual[0] <= cls.cuadrantes[i + 1][2]):
+						#Cumplio estar en rango x del cuadrante.
+						if(pos_actual[1] >= cls.cuadrantes[i + 1][1]):
+							if(pos_actual[1] <= cls.cuadrantes[i + 1][3]):
+								#Cumplio estar en rango y del cuadrante.
+								if(cls.contadores_cuadrantes[i].obt_estado() == Contador.EstadoContador.contar):
+									cls.conteo_cs += 1
+									tortuga.contar_en_c()
+									
 		return
 		
 		
+	
+		
 	@classmethod
-	def pos_playa(self, pos_x_tortuga):
+	def pos_playa(cls, pos_x_tortuga):
 		indice = -1
 		if(pos_x_tortuga <= 100):
 			indice = 0
