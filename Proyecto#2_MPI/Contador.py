@@ -33,11 +33,11 @@ class Contador:
 		Contador.id += 1
 		self.velocidad = 6
 		self.posicion = np.random.randint(0, 1499), np.random.randint(0, 1499) ## OJO: así se crea un par ordenado, un tuple de dos valores
-		self.estado = Contador.EstadoContador.esperar
+		self.estado = Contador.EstadoContador.contar
 		#variables del C
 		self.avanza_derecha = True
 		self.contando = True
-		self.contador_Tics = True
+		self.contador_tics = 0
 		self.tiempo_muestreo = 0
 		return
 	
@@ -60,6 +60,9 @@ class Contador:
 		self.velocidad = vn
 		return
 		
+	def obt_estado(self):
+		return self.estado
+		
 	def asg_posicion(self, pn):
 		self.posicion = pn
 		return
@@ -70,21 +73,21 @@ class Contador:
 			pos_x = self.posicion[0]
 			pos_y = self.posicion[1]
 			pos_x += self.velocidad
-			self.posicion = pos_x,pos_y
+			self.posicion = pos_x, pos_y
 		else:
 			pos_x = self.posicion[0]
 			pos_y = self.posicion[1]
 			pos_x -= self.velocidad
-			self.posicion = pos_x,pos_y
+			self.posicion = pos_x, pos_y
 		return
 	
 	def cambiar_estado(self):
-		self.contador_Tics=0
-		self.contando = not self.contando()
+		self.contador_tics = 0
+		self.contando = not self.contando
 		if (self.contando):
-			self.estado= self.EstadoContador.contar
+			self.estado = self.EstadoContador.contar
 		else:
-			self.estado= self.EstadoContador.esperar
+			self.estado = self.EstadoContador.esperar
 		return
 
 		
@@ -94,3 +97,11 @@ class Contador:
 		
 	def obt_tiempo_muestreo(self):
 		return self.tiempo_muestreo
+		
+		
+	def aumentar_tic(self):
+		self.contador_tics += 1
+		
+		
+	def obt_contador_tics(self):
+		return self.contador_tics
