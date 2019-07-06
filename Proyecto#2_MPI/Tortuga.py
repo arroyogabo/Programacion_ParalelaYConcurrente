@@ -3,6 +3,7 @@ import enum
 import numpy as np	# para generar números al azar según distribución estándar
 import json			# para crear una hilera json en toJSON()
 import random
+from mpi4py import MPI
 class Tortuga:
 	"""
 	Representa una tortuga con id, velocidad y posicion.
@@ -15,8 +16,11 @@ class Tortuga:
 	""" metodo de clase que genera N tortugas """
 	@classmethod
 	def crear_lista_tortugas(cls,N): #cls es la clase.
+		comm = MPI.COMM_WORLD
+		proc_count = comm.size
 		tortugas = []
-		for i in range(N):
+		n = N // proc_count
+		for i in range(n):
 			t_n = Tortuga()
 			tortugas.append(t_n)
 		return tortugas
