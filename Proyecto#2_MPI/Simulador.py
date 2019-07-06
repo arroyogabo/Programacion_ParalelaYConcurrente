@@ -73,25 +73,26 @@ class Simulador:
 			
 			# CALCULO DE LA POSICION Y FINAL DE LA TORTUGA (ANIDAMIENTO)
 			proba = np.random.uniform(0,1) #Probabilidad de anidamiento en los diferentes sectores de la playa
-			if(proba <= cls.comportamiento_tortugas[2][0]):
+			if(proba <= cls.comportamiento_tortugas[2][3]):
 				i = Simulador.pos_playa(pos_x_tortuga)
-				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]-10, cls.sectores_playa[i][1])
+				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)	
+			else:	
+				acumulado = cls.comportamiento_tortugas[2][0] + cls.comportamiento_tortugas[2][3]
+				if(proba >= cls.comportamiento_tortugas[2][3] or proba <= acumulado): #17
+					i = Simulador.pos_playa(pos_x_tortuga)
+					pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+11, cls.sectores_playa[i][1]+20)
+				else:
+					acumulado2 = acumulado + cls.comportamiento_tortugas[2][2]
+					if(proba >= acumulado or proba <= acumulado2): #24
+						i = Simulador.pos_playa(pos_x_tortuga)
+						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]-10, cls.sectores_playa[i][1])
+					else:		
+						i = Simulador.pos_playa(pos_x_tortuga)
+						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)
+							
 				
-			elif (proba <= cls.comportamiento_tortugas[2][1]+cls.comportamiento_tortugas[2][0]):
-				i = Simulador.pos_playa(pos_x_tortuga)
-				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1], cls.sectores_playa[i][1]+10)
-				
-			elif (proba <= cls.comportamiento_tortugas[2][2]+cls.comportamiento_tortugas[2][1]+cls.comportamiento_tortugas[2][0]):
-				i = Simulador.pos_playa(pos_x_tortuga)
-				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+11, cls.sectores_playa[i][1]+20)
-				
-			else:
-				i = Simulador.pos_playa(pos_x_tortuga)
-				pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)
-			
 			pos_y_anidacion = int(pos_y_anidacion)
 			pos_anidacion = pos_x_tortuga, pos_y_anidacion
-			
 			
 			## Llena una lista con los tiempos de duracion de cada estado de la tortuga
 			contador = 0
@@ -148,7 +149,7 @@ class Simulador:
 			contador_i.asg_tiempo_muestreo(cls.transectos_verticales[0][1])
 			contador_i.asg_posicion(posicion)
 			cls.contadores_tv.append(contador_i)
-			print(contador_i.toJSON())
+			
 		
 		return
 	
@@ -199,13 +200,13 @@ class Simulador:
 					
 					if(tortuga.obt_salio() and tortuga.obt_estado() == Tortuga.EstadoTortuga.vagar):
 						tortuga.avanzar()
-						Simulador.contar_en_cuadrantes(tortuga)
+					
 						
 					if(tortuga.obt_posicion() == tortuga.obt_posicion_anidacion() and tortuga.obt_estado() is not Tortuga.EstadoTortuga.inactiva):
 						estado = tortuga.estado_a_int(tortuga.obt_estado())
 						proba = cls.comportamiento_tortugas[0][estado]
 						tortuga.cambiar_estado(proba)
-						
+					Simulador.contar_en_cuadrantes(tortuga)
 					#Conteo en transecto vertical.
 					for contador in cls.contadores_tv:
 						if( not tortuga.obt_contada_en_tv()):
@@ -221,8 +222,8 @@ class Simulador:
 			
 			cls.tic += 1
 		
-		print(cls.conteo_tsv)
-		return
+		
+		return cls.conteo_tsv, cls.conteo_cs
 	
 	
 	@classmethod
