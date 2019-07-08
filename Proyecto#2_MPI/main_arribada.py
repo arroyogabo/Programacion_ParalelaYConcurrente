@@ -55,6 +55,7 @@ def main():
 	comm = MPI.COMM_WORLD
 	pid = comm.rank
 	proc_count = comm.size
+	w_time = 0.0
 	
 	global_conteo_tv = 0
 	global_conteo_c = 0
@@ -76,11 +77,14 @@ def main():
 	Simulador.inicializar_cuadrantes(dts_c)
 	Simulador.inicializar_arribada(dts_ct, 7000) #dts_exp[0][2]
 	
-	
-	conteo_tv, conteo_c = Simulador.simular(372)
+	comm.barrier()
+	w_time = MPI.Wtime()
+	conteo_tv, conteo_c, conteo_tpb = Simulador.simular(372)
 	global_conteo_tv = comm.reduce(conteo_tv, op=MPI.SUM)
 	global_conteo_c = comm.reduce(conteo_c, op=MPI.SUM)
-	
+	global_conteo_tpb = comm.reduce(conteo_tpb, op=MPI.SUM)
+	comm.barrier()
+	w_time = MPI.Wtime() - w_time
 	if pid == 0:
 	
 		##ESTIMACION TV
@@ -107,11 +111,20 @@ def main():
 		area_cuadrantes = 10.0 * 10.0
 		m = total_tics // (dts_ct[0][1]*2.0)
 		estimacion_c = global_conteo_c * 1.25 
-		estimacion_c = estimacion_c * (area_cuadrantes/area_observacion) 
+		estimacion_c = estimacion_c * (area_observacion/area_cuadrantes) 
 		estimacion_c = estimacion_c * total_tics
 		estimacion_c = estimacion_c / (1.08 * m)
-		print(estimacion_c)
-		print(estimacion_tv)
+		
+		##ESTIMACION TRANSECTO PARALELO BERMA
+		tiempo_de_muestreo = dts_tpb[0][1]
+		cnt_muestreos = total_tics / (tiempo_de_muestreo)
+		estimacion_tpb = global_conteo_tpb * 20.0 / (4.2 * cnt_muestreos)  
+		
+		
+		print("Estimacion cuadrantes: ", estimacion_c)
+		print("Estimacion TV: ", estimacion_tv)
+		print("Estimacion TPB: ", estimacion_tpb)
+		print("Tiempo de duracion: ", w_time)
 	## OJO: el archivo esta en una carpeta "archivos"
 	
 main()
