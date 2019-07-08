@@ -105,3 +105,13 @@ class Contador:
 		
 	def obt_contador_tics(self):
 		return self.contador_tics
+		
+	def obt_avanza_derecha(self):
+		return self.avanza_derecha
+		
+	def avanzar_derecha(self):
+		self.avanza_derecha = True
+		
+	def avanzar_izquierda(self):
+		self.avanza_derecha = False
+		
