@@ -52,6 +52,7 @@ class Tortuga:
 		self.contada = False
 		self.contada_c = False 	#Si se conto en cuadrantes
 		self.contada_tv = False	#Si se conto en transecto vertical
+		self.contada_tpb = False
 		self.tiempos_estados = np.zeros(5)
 		return
 	
@@ -190,6 +191,12 @@ class Tortuga:
 		
 	def contar_en_tv(self):
 		self.contada_tv = True
+		
+	def contar_en_tpb(self):
+		self.contada_tpb = True
+	
+	def obt_contada_en_tpb(self):
+		return self.contada_tpb
 		
 	def estado_a_int(self, estado):
 		n = -1
