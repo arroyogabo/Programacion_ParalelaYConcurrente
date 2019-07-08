@@ -11,6 +11,7 @@ class Simulador:
 	## VARIABLES DE CLASE
 	contadores_cuadrantes = []
 	contadores_tv = []
+	contadores_tpb = []
 	sectores_playa = []
 	marea = []
 	comportamiento_tortugas = []
@@ -81,11 +82,13 @@ class Simulador:
 				if(proba >= cls.comportamiento_tortugas[2][3] or proba <= acumulado): #17
 					i = Simulador.pos_playa(pos_x_tortuga)
 					pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+11, cls.sectores_playa[i][1]+20)
+					
 				else:
 					acumulado2 = acumulado + cls.comportamiento_tortugas[2][2]
 					if(proba >= acumulado or proba <= acumulado2): #24
 						i = Simulador.pos_playa(pos_x_tortuga)
 						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]-10, cls.sectores_playa[i][1])
+						
 					else:		
 						i = Simulador.pos_playa(pos_x_tortuga)
 						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)
@@ -123,6 +126,19 @@ class Simulador:
 	@classmethod
 	def inicializar_transecto_berma(cls, tb):
 		cls.transecto_berma = tb
+		marea_media = (cls.marea[1] + cls.marea[0]) / 2.0
+		velocidad = 100.0 #100 mts por minuto (tic)
+		cnt_contadores = cls.transecto_berma[0][0]
+		for i in range(cnt_contadores):
+			c = Contador()
+			pos_x = 0
+			pos_y = marea_media + cls.sectores_playa[0][1]
+			posicion = pos_x, pos_y
+			c.asg_posicion(posicion)
+			c.asg_velocidad(velocidad)
+			
+			cls.contadores_tpb.append(c)			
+		
 		return
 	
 	## EFE: Inicializa los transectos verticales.
@@ -178,6 +194,32 @@ class Simulador:
 		while(cls.tic < cls.tics): #Tic actual menor al total
 			marea_actual += pendiente	#Aumento de la marea por tic
 			
+			for contador in cls.contadores_tpb:
+				pos_contador = contador.obt_posicion()
+				if( pos_contador[0] >= 0 or pos_contador[0] <= 1500 ):
+					pos_x_contador = pos_contador[0]
+					sector = Simulador.pos_playa(pos_x_contador)
+					pos_y_contador = marea_media + cls.sectores_playa[sector][1]
+					posicion = pos_x_contador, pos_y_contador
+					contador.asg_posicion(posicion)
+				pos_contador = contador.obt_posicion()
+				if( pos_contador[0] < 0 or pos_contador[0] > 1500 ):
+					contador.aumentar_tic()
+					if( contador.obt_contador_tics() == cls.transecto_berma[0][1] ):
+						if( pos_contador[0] > 1500 ):
+							
+							contador.cambiar_estado()
+							contador.avanzar_izquierda()
+							contador.avanzar()
+						else:
+							if( pos_contador[0] < 0 ):
+								contador.cambiar_estado()
+								contador.avanzar_derecha()
+								contador.avanzar()
+				else:
+					contador.avanzar()
+				#print(contador.obt_posicion())
+								
 			#Revision del estado de los contadores en los muestreos.
 			for contador in cls.contadores_cuadrantes:
 				contador.aumentar_tic()
@@ -196,6 +238,26 @@ class Simulador:
 					if(int(tortuga.obt_tic_salida()) == cls.tic and not tortuga.obt_salio()):
 						tortuga.avanzar()
 						tortuga._salio()
+					
+					#	CONTEO TPB
+					for contador in cls.contadores_tpb:
+						#if( not tortuga.obt_contada_en_tpb() ):
+						pos_contador = contador.obt_posicion()
+						pos_tortuga = tortuga.obt_posicion()
+							
+						pos_x_contador = pos_contador[0]
+						pos_y_contador = pos_contador[1]
+							
+						pos_x_tortuga = pos_tortuga[0]
+						pos_y_tortuga = pos_tortuga[1]
+							
+						if( pos_x_tortuga >= pos_x_contador ):	
+							if( pos_x_tortuga <= (pos_x_contador + cls.transecto_berma[0][1]) ):
+								if( pos_y_tortuga >= pos_y_contador ):
+									if( pos_y_tortuga <= (pos_y_contador + 15) ):
+										cls.conteo_tpb += 1
+											
+											#tortuga.contar_en_tpb()
 					
 					
 					if(tortuga.obt_salio() and tortuga.obt_estado() == Tortuga.EstadoTortuga.vagar):
@@ -222,8 +284,7 @@ class Simulador:
 			
 			cls.tic += 1
 		
-		
-		return cls.conteo_tsv, cls.conteo_cs
+		return cls.conteo_tsv, cls.conteo_cs, cls.conteo_tpb
 	
 	
 	@classmethod
