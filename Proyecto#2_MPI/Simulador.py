@@ -82,13 +82,14 @@ class Simulador:
 				if(proba >= cls.comportamiento_tortugas[2][3] or proba <= acumulado): #17
 					i = Simulador.pos_playa(pos_x_tortuga)
 					pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+11, cls.sectores_playa[i][1]+20)
+					#pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]-10, cls.sectores_playa[i][1])
 					
 				else:
 					acumulado2 = acumulado + cls.comportamiento_tortugas[2][2]
 					if(proba >= acumulado or proba <= acumulado2): #24
 						i = Simulador.pos_playa(pos_x_tortuga)
 						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]-10, cls.sectores_playa[i][1])
-						
+						#pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+11, cls.sectores_playa[i][1]+20)
 					else:		
 						i = Simulador.pos_playa(pos_x_tortuga)
 						pos_y_anidacion = np.random.uniform(cls.sectores_playa[i][1]+21, cls.sectores_playa[i][1]+30)
@@ -303,10 +304,18 @@ class Simulador:
 									tortuga.contar_en_c()
 									
 		return
-		
-		
-	
-		
+
+	@classmethod
+	def reiniciar(cls):
+		cls.contadores_cuadrantes.clear()
+		cls.contadores_tv.clear()
+		cls.contadores_tpb.clear()	
+		cls.tic = 0			
+		cls.conteo_tpb = 0 		
+		cls.conteo_tsv = 0	
+		cls.conteo_cs = 0		
+		return
+
 	@classmethod
 	def pos_playa(cls, pos_x_tortuga):
 		indice = -1
