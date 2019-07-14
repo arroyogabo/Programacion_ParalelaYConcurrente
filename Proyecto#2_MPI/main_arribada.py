@@ -54,7 +54,7 @@ def main():
 	
 	comm = MPI.COMM_WORLD
 	pid = comm.rank
-	proc_count = comm.size
+
 	w_time = 0.0
 	
 	global_conteo_tv = 0
@@ -76,7 +76,8 @@ def main():
 	Simulador.inicializar_transectos_verticales(dts_tv)
 	Simulador.inicializar_cuadrantes(dts_c)
 	Simulador.inicializar_arribada(dts_ct, 7000) #dts_exp[0][2]
-	
+
+		
 	comm.barrier()
 	w_time = MPI.Wtime()
 	conteo_tv, conteo_c, conteo_tpb = Simulador.simular(372)
@@ -86,7 +87,7 @@ def main():
 	comm.barrier()
 	w_time = MPI.Wtime() - w_time
 	if pid == 0:
-	
+		
 		##ESTIMACION TV
 		estimacion_tv = 0.0
 		area_observacion = 0.0
@@ -97,34 +98,35 @@ def main():
 		pt = 64.8	#tiempo que duran las tortugas en el transecto.
 		for i in range(len(dts_terreno)):
 			area_observacion = area_observacion + (dts_terreno[i][3]*100)
-			long_tv = long_tv + ((dts_terreno[i][3]))
-			
+				
+		for i in range(1, len(dts_tv) - 1):
+			long_tv += dts_tv[i][2] - dts_tv[i][1]
+				
 		estimacion_tv = (area_observacion*total_tics)
 		estimacion_tv = estimacion_tv / (2.0*w*m*long_tv)
 		estimacion_tv = estimacion_tv * (global_conteo_tv/pt)
-		
+			
 		##ESTIMACION CUADRANTES
 		area_observacion = 0.0
 		for i in range(len(dts_terreno)):
-			area_observacion = area_observacion + (dts_terreno[i][3])
+			area_observacion +=  (dts_terreno[i][3]*100)
 		estimacion_c = 0.0
 		area_cuadrantes = 10.0 * 10.0
-		m = total_tics // (dts_ct[0][1]*2.0)
-		estimacion_c = global_conteo_c * 1.25 
-		estimacion_c = estimacion_c * (area_observacion/area_cuadrantes) 
-		estimacion_c = estimacion_c * total_tics
-		estimacion_c = estimacion_c / (1.08 * m)
-		
+		m = total_tics // (dts_ct[0][1])
+		estimacion_c = (((global_conteo_c * 1.25) * (area_cuadrantes / area_observacion)) * total_tics) / (1.08 * m)
+			
 		##ESTIMACION TRANSECTO PARALELO BERMA
+		estimacion_tpb = 0.0
 		tiempo_de_muestreo = dts_tpb[0][1]
 		cnt_muestreos = total_tics / (tiempo_de_muestreo)
 		estimacion_tpb = global_conteo_tpb * 20.0 / (4.2 * cnt_muestreos)  
-		
-		
+			
+			
 		print("Estimacion cuadrantes: ", estimacion_c)
 		print("Estimacion TV: ", estimacion_tv)
 		print("Estimacion TPB: ", estimacion_tpb)
 		print("Tiempo de duracion: ", w_time)
+
 	## OJO: el archivo esta en una carpeta "archivos"
 	
 main()
